@@ -2,7 +2,7 @@
 name = "petgraph-live"
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.85"
+rust-version = "1.95"
 description = "Generic generation-keyed graph cache, disk snapshot, and graph algorithms for petgraph 0.8"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/geronimo-iia/petgraph-live"
