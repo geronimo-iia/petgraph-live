@@ -9,7 +9,45 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.95"
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Check formatting
+        run: cargo fmt -- --check
+
+      - name: Clippy
+        run: cargo clippy -- -D warnings
+
+      - name: Build
+        run: cargo build --locked
+
+      - name: Test
+        run: cargo test --locked
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: softprops/action-gh-release@v3
+        with:
+          prerelease: ${{ contains(github.ref, '-rc') }}
+
   publish:
+    needs: release
+    if: ${{ !contains(github.ref, '-rc') }}
     runs-on: ubuntu-latest
 
     steps:
@@ -21,15 +59,5 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      - name: Check formatting
-        run: cargo fmt -- --check
-
-      - name: Clippy
-        run: cargo clippy -- -D warnings
-
-      - name: Test
-        run: cargo test --locked
-
       - name: Publish to crates.io
-        if: ${{ !contains(github.ref, '-rc') }}
         run: cargo publish --locked --token ${{ secrets.CARGO_TOKEN }}
