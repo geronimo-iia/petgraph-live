@@ -1,0 +1,16 @@
+[package]
+name = "petgraph-live"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Generic generation-keyed graph cache, disk snapshot, and graph algorithms for petgraph 0.8"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/geronimo-iia/petgraph-live"
+homepage = "https://github.com/geronimo-iia/petgraph-live"
+documentation = "https://docs.rs/petgraph-live"
+readme = "README.md"
+keywords = ["petgraph", "graph", "cache", "algorithms", "snapshot"]
+categories = ["data-structures", "algorithms"]
+
+[dependencies]
+petgraph = "0.8"
