@@ -54,3 +54,14 @@ fn test_meta_new() {
     assert_eq!(meta.key, "sha123");
     assert!(!meta.petgraph_live_version.is_empty());
 }
+
+#[cfg(feature = "snapshot")]
+#[test]
+fn test_error_display() {
+    use petgraph_live::snapshot::SnapshotError;
+    let e = SnapshotError::KeyNotFound { key: "sha_abc".into() };
+    assert!(e.to_string().contains("sha_abc"));
+    let e2 = SnapshotError::InvalidKey("   ".into());
+    assert!(e2.to_string().contains("invalid key"));
+    assert!(SnapshotError::NoSnapshotFound.to_string().contains("no snapshot"));
+}
