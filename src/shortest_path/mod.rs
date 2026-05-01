@@ -8,9 +8,9 @@ mod seidel;
 mod shortest_distances;
 
 pub use floyd_warshall::{distance_map, floyd_warshall};
-pub use seidel::seidel;
 #[allow(unused_imports)]
 pub(crate) use seidel::apd;
+pub use seidel::seidel;
 pub use shortest_distances::shortest_distances;
 
 pub use petgraph::algo::NegativeCycle;

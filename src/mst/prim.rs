@@ -133,19 +133,41 @@ mod tests {
     fn test_prim() {
         assert_eq!(
             prim(&graph1(), |edge| *edge.weight()),
-            vec![(ni(4), ni(0)), (ni(1), ni(4)), (ni(3), ni(1)), (ni(2), ni(3))]
+            vec![
+                (ni(4), ni(0)),
+                (ni(1), ni(4)),
+                (ni(3), ni(1)),
+                (ni(2), ni(3))
+            ]
         );
         assert_eq!(
             prim(&graph2(), |edge| *edge.weight()),
-            vec![(ni(1), ni(0)), (ni(2), ni(1)), (ni(4), ni(3)), (ni(5), ni(4)), (ni(6), ni(5))]
+            vec![
+                (ni(1), ni(0)),
+                (ni(2), ni(1)),
+                (ni(4), ni(3)),
+                (ni(5), ni(4)),
+                (ni(6), ni(5))
+            ]
         );
         assert_eq!(
             prim(&graph1(), |edge| -*edge.weight()),
-            vec![(ni(1), ni(0)), (ni(2), ni(1)), (ni(4), ni(0)), (ni(3), ni(4))]
+            vec![
+                (ni(1), ni(0)),
+                (ni(2), ni(1)),
+                (ni(4), ni(0)),
+                (ni(3), ni(4))
+            ]
         );
         assert_eq!(
             prim(&graph2(), |edge| -*edge.weight()),
-            vec![(ni(2), ni(0)), (ni(1), ni(2)), (ni(4), ni(3)), (ni(6), ni(4)), (ni(5), ni(4))]
+            vec![
+                (ni(2), ni(0)),
+                (ni(1), ni(2)),
+                (ni(4), ni(3)),
+                (ni(6), ni(4)),
+                (ni(5), ni(4))
+            ]
         );
     }
 }

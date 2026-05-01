@@ -742,19 +742,10 @@ mod tests {
 
         assert_eq!(weighted_radius(&graph1(), |_| 1.0f32), Some(5.0));
         assert_eq!(weighted_radius(&graph2(), |_| 2.0f32), Some(4.0));
-        assert_eq!(
-            weighted_radius(&graph3(), |edge| *edge.weight()),
-            Some(0.0)
-        );
+        assert_eq!(weighted_radius(&graph3(), |edge| *edge.weight()), Some(0.0));
         assert_eq!(weighted_radius(&graph4(), |edge| *edge.weight()), None);
-        assert_eq!(
-            weighted_radius(&graph5(), |edge| *edge.weight()),
-            Some(5.0)
-        );
-        assert_eq!(
-            weighted_radius(&graph6(), |edge| *edge.weight()),
-            Some(inf)
-        );
+        assert_eq!(weighted_radius(&graph5(), |edge| *edge.weight()), Some(5.0));
+        assert_eq!(weighted_radius(&graph6(), |edge| *edge.weight()), Some(inf));
     }
 
     #[test]
@@ -789,10 +780,7 @@ mod tests {
             weighted_center(&graph3(), |edge| *edge.weight()),
             vec![0.into()]
         );
-        assert_eq!(
-            weighted_center(&graph4(), |edge| *edge.weight()),
-            vec![]
-        );
+        assert_eq!(weighted_center(&graph4(), |edge| *edge.weight()), vec![]);
         assert_eq!(
             weighted_center(&graph5(), |edge| *edge.weight()),
             vec![2.into()]
@@ -829,10 +817,7 @@ mod tests {
             weighted_periphery(&graph3(), |edge| *edge.weight()),
             vec![0.into()]
         );
-        assert_eq!(
-            weighted_periphery(&graph4(), |edge| *edge.weight()),
-            vec![]
-        );
+        assert_eq!(weighted_periphery(&graph4(), |edge| *edge.weight()), vec![]);
         assert_eq!(
             weighted_periphery(&graph5(), |edge| *edge.weight()),
             vec![5.into()]

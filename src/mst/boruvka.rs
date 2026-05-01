@@ -152,19 +152,41 @@ mod tests {
         // Same MST as prim (same edge set, different order) — compare as sorted sets
         assert_eq!(
             sorted(boruvka(&graph1(), |edge| *edge.weight())),
-            sorted(vec![(ni(0), ni(4)), (ni(1), ni(4)), (ni(1), ni(3)), (ni(2), ni(3))])
+            sorted(vec![
+                (ni(0), ni(4)),
+                (ni(1), ni(4)),
+                (ni(1), ni(3)),
+                (ni(2), ni(3))
+            ])
         );
         assert_eq!(
             sorted(boruvka(&graph2(), |edge| *edge.weight())),
-            sorted(vec![(ni(1), ni(0)), (ni(1), ni(2)), (ni(3), ni(4)), (ni(5), ni(4)), (ni(6), ni(5))])
+            sorted(vec![
+                (ni(1), ni(0)),
+                (ni(1), ni(2)),
+                (ni(3), ni(4)),
+                (ni(5), ni(4)),
+                (ni(6), ni(5))
+            ])
         );
         assert_eq!(
             sorted(boruvka(&graph1(), |edge| -*edge.weight())),
-            sorted(vec![(ni(0), ni(1)), (ni(1), ni(2)), (ni(0), ni(4)), (ni(3), ni(4))])
+            sorted(vec![
+                (ni(0), ni(1)),
+                (ni(1), ni(2)),
+                (ni(0), ni(4)),
+                (ni(3), ni(4))
+            ])
         );
         assert_eq!(
             sorted(boruvka(&graph2(), |edge| -*edge.weight())),
-            sorted(vec![(ni(0), ni(2)), (ni(1), ni(2)), (ni(3), ni(4)), (ni(4), ni(6)), (ni(5), ni(4))])
+            sorted(vec![
+                (ni(0), ni(2)),
+                (ni(1), ni(2)),
+                (ni(3), ni(4)),
+                (ni(4), ni(6)),
+                (ni(5), ni(4))
+            ])
         );
     }
 }

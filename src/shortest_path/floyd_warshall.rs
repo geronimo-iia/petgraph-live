@@ -98,10 +98,7 @@ where
 /// ```
 type DistMap<N, K> = HashMap<(N, N), K>;
 
-pub fn distance_map<G, F, K>(
-    graph: G,
-    edge_cost: F,
-) -> Result<DistMap<G::NodeId, K>, NegativeCycle>
+pub fn distance_map<G, F, K>(graph: G, edge_cost: F) -> Result<DistMap<G::NodeId, K>, NegativeCycle>
 where
     G: IntoEdgeReferences + IntoNodeIdentifiers + NodeIndexable + GraphProp,
     G::NodeId: Eq + Hash,
@@ -121,8 +118,8 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use petgraph::graph::{Graph, NodeIndex};
     use petgraph::Undirected;
+    use petgraph::graph::{Graph, NodeIndex};
 
     fn graph1() -> Graph<(), f32> {
         let mut graph = Graph::<(), f32>::new();
@@ -287,10 +284,7 @@ mod tests {
         let graph = graph4();
         let mut expected = HashMap::new();
         expected.insert((graph.from_index(0), graph.from_index(0)), 0.0f32);
-        assert_eq!(
-            distance_map(&graph, |edge| *edge.weight()),
-            Ok(expected)
-        );
+        assert_eq!(distance_map(&graph, |edge| *edge.weight()), Ok(expected));
     }
 
     #[test]

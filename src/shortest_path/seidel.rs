@@ -1,4 +1,6 @@
-use petgraph::visit::{EdgeRef, GraphProp, IntoEdges, IntoNodeIdentifiers, NodeCount, NodeIndexable};
+use petgraph::visit::{
+    EdgeRef, GraphProp, IntoEdges, IntoNodeIdentifiers, NodeCount, NodeIndexable,
+};
 
 /// [Seidel's algorithm (APD)](https://en.wikipedia.org/wiki/Seidel%27s_algorithm)
 /// for all pairs shortest path problem.
