@@ -436,3 +436,34 @@ fn test_purge_deletes_all() {
     assert_eq!(count, 4);
     assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 0);
 }
+
+#[cfg(feature = "snapshot")]
+#[test]
+fn test_rotation_save_5_keep_3() {
+    use petgraph::Graph;
+    use petgraph_live::snapshot::{Compression, SnapshotConfig, SnapshotFormat, list, save};
+    use std::{thread, time::Duration};
+    let dir = tempfile::tempdir().unwrap();
+    let cfg_base = SnapshotConfig {
+        dir: dir.path().to_path_buf(),
+        name: "g".into(),
+        key: None,
+        format: SnapshotFormat::Bincode,
+        compression: Compression::None,
+        keep: 3,
+    };
+    let g: Graph<u32, ()> = Graph::new();
+    for i in 1u32..=5 {
+        let mut cfg = cfg_base.clone();
+        cfg.key = Some(format!("key{}", i));
+        save(&cfg, &g).unwrap();
+        thread::sleep(Duration::from_millis(10));
+    }
+    let entries = list(&cfg_base).unwrap();
+    assert_eq!(entries.len(), 3);
+    // newest 3 retained: key3, key4, key5
+    let keys: Vec<&str> = entries.iter().map(|(_, m)| m.key.as_str()).collect();
+    assert!(keys.contains(&"key3"));
+    assert!(keys.contains(&"key4"));
+    assert!(keys.contains(&"key5"));
+}
