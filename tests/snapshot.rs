@@ -144,3 +144,192 @@ fn test_save_same_key_idempotent() {
     let count = std::fs::read_dir(dir.path()).unwrap().count();
     assert_eq!(count, 1);
 }
+
+#[cfg(feature = "snapshot")]
+#[test]
+fn test_save_load_roundtrip_bincode() {
+    use petgraph::Graph;
+    use petgraph_live::snapshot::{Compression, SnapshotConfig, SnapshotFormat, load, save};
+    let dir = tempfile::tempdir().unwrap();
+    let cfg = SnapshotConfig {
+        dir: dir.path().to_path_buf(),
+        name: "g".into(),
+        key: Some("v1".into()),
+        format: SnapshotFormat::Bincode,
+        compression: Compression::None,
+        keep: 3,
+    };
+    let mut graph: Graph<String, ()> = Graph::new();
+    graph.add_node("a".into());
+    graph.add_node("b".into());
+    graph.add_node("c".into());
+    save(&cfg, &graph).unwrap();
+    let loaded: Graph<String, ()> = load(&cfg).unwrap().unwrap();
+    assert_eq!(loaded.node_count(), 3);
+}
+
+#[cfg(feature = "snapshot")]
+#[test]
+fn test_save_load_roundtrip_json() {
+    use petgraph::Graph;
+    use petgraph_live::snapshot::{Compression, SnapshotConfig, SnapshotFormat, load, save};
+    let dir = tempfile::tempdir().unwrap();
+    let cfg = SnapshotConfig {
+        dir: dir.path().to_path_buf(),
+        name: "g".into(),
+        key: Some("v1".into()),
+        format: SnapshotFormat::Json,
+        compression: Compression::None,
+        keep: 3,
+    };
+    let mut graph: Graph<String, ()> = Graph::new();
+    graph.add_node("a".to_string());
+    graph.add_node("b".to_string());
+    graph.add_node("c".to_string());
+    save(&cfg, &graph).unwrap();
+    let loaded: Graph<String, ()> = load(&cfg).unwrap().unwrap();
+    assert_eq!(loaded.node_count(), 3);
+}
+
+#[cfg(feature = "snapshot")]
+#[test]
+fn test_load_key_not_found() {
+    use petgraph::Graph;
+    use petgraph_live::snapshot::{
+        Compression, SnapshotConfig, SnapshotError, SnapshotFormat, load, save,
+    };
+    let dir = tempfile::tempdir().unwrap();
+    let mut cfg = SnapshotConfig {
+        dir: dir.path().to_path_buf(),
+        name: "g".into(),
+        key: Some("v1".into()),
+        format: SnapshotFormat::Bincode,
+        compression: Compression::None,
+        keep: 3,
+    };
+    let graph: Graph<(), ()> = Graph::new();
+    save(&cfg, &graph).unwrap();
+    cfg.key = Some("v2".into());
+    let result: Result<Option<Graph<(), ()>>, _> = load(&cfg);
+    assert!(matches!(result, Err(SnapshotError::KeyNotFound { .. })));
+}
+
+#[cfg(feature = "snapshot")]
+#[test]
+fn test_load_no_snapshot_returns_none() {
+    use petgraph::Graph;
+    use petgraph_live::snapshot::{
+        Compression, SnapshotConfig, SnapshotError, SnapshotFormat, load,
+    };
+    let dir = tempfile::tempdir().unwrap();
+    // key=Some, empty dir → KeyNotFound
+    let cfg = SnapshotConfig {
+        dir: dir.path().to_path_buf(),
+        name: "g".into(),
+        key: Some("v1".into()),
+        format: SnapshotFormat::Bincode,
+        compression: Compression::None,
+        keep: 3,
+    };
+    let result: Result<Option<Graph<(), ()>>, _> = load(&cfg);
+    assert!(matches!(result, Err(SnapshotError::KeyNotFound { .. })));
+    // key=None, empty dir → Ok(None)
+    let mut cfg2 = cfg.clone();
+    cfg2.key = None;
+    let result2: Result<Option<Graph<(), ()>>, _> = load(&cfg2);
+    assert!(matches!(result2, Ok(None)));
+}
+
+#[cfg(feature = "snapshot")]
+#[test]
+fn test_load_none_key_returns_most_recent() {
+    use petgraph::Graph;
+    use petgraph_live::snapshot::{Compression, SnapshotConfig, SnapshotFormat, load, save};
+    use std::{thread, time::Duration};
+    let dir = tempfile::tempdir().unwrap();
+    let mut cfg = SnapshotConfig {
+        dir: dir.path().to_path_buf(),
+        name: "g".into(),
+        key: Some("v1".into()),
+        format: SnapshotFormat::Bincode,
+        compression: Compression::None,
+        keep: 10,
+    };
+    let mut g1: Graph<u32, ()> = Graph::new();
+    g1.add_node(1);
+    save(&cfg, &g1).unwrap();
+    thread::sleep(Duration::from_millis(10));
+    cfg.key = Some("v2".into());
+    let mut g2: Graph<u32, ()> = Graph::new();
+    g2.add_node(1);
+    g2.add_node(2);
+    save(&cfg, &g2).unwrap();
+    cfg.key = None;
+    let loaded: Graph<u32, ()> = load(&cfg).unwrap().unwrap();
+    assert_eq!(loaded.node_count(), 2);
+}
+
+#[cfg(feature = "snapshot")]
+#[test]
+fn test_load_or_build_falls_back_on_empty() {
+    use petgraph::Graph;
+    use petgraph_live::snapshot::{
+        Compression, SnapshotConfig, SnapshotFormat, load, load_or_build,
+    };
+    let dir = tempfile::tempdir().unwrap();
+    let cfg = SnapshotConfig {
+        dir: dir.path().to_path_buf(),
+        name: "g".into(),
+        key: Some("v1".into()),
+        format: SnapshotFormat::Bincode,
+        compression: Compression::None,
+        keep: 3,
+    };
+    let mut called = false;
+    let g: Graph<u32, ()> = load_or_build(&cfg, || {
+        called = true;
+        let mut g = Graph::new();
+        g.add_node(42u32);
+        Ok(g)
+    })
+    .unwrap();
+    assert!(called);
+    assert_eq!(g.node_count(), 1);
+    // file saved → can load now
+    let loaded: Graph<u32, ()> = load(&cfg).unwrap().unwrap();
+    assert_eq!(loaded.node_count(), 1);
+}
+
+#[cfg(feature = "snapshot")]
+#[test]
+fn test_load_or_build_falls_back_on_key_not_found() {
+    use petgraph::Graph;
+    use petgraph_live::snapshot::{
+        Compression, SnapshotConfig, SnapshotFormat, load, load_or_build, save,
+    };
+    let dir = tempfile::tempdir().unwrap();
+    let mut cfg = SnapshotConfig {
+        dir: dir.path().to_path_buf(),
+        name: "g".into(),
+        key: Some("v1".into()),
+        format: SnapshotFormat::Bincode,
+        compression: Compression::None,
+        keep: 10,
+    };
+    let g1: Graph<u32, ()> = Graph::new();
+    save(&cfg, &g1).unwrap();
+    cfg.key = Some("v2".into());
+    let mut build_called = false;
+    let _g: Graph<u32, ()> = load_or_build(&cfg, || {
+        build_called = true;
+        let mut g = Graph::new();
+        g.add_node(99u32);
+        Ok(g)
+    })
+    .unwrap();
+    assert!(build_called);
+    // v1 still present
+    cfg.key = Some("v1".into());
+    let v1: Graph<u32, ()> = load(&cfg).unwrap().unwrap();
+    assert_eq!(v1.node_count(), 0);
+}
