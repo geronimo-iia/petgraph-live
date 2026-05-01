@@ -1,17 +1,24 @@
 use thiserror::Error;
 
+/// Errors returned by snapshot operations.
 #[derive(Debug, Error)]
 pub enum SnapshotError {
+    /// Filesystem I/O failure.
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
+    /// No file matching the requested key exists in the snapshot directory.
     #[error("key not found: {key:?}")]
     KeyNotFound { key: String },
+    /// The key sanitizes to an empty string and cannot be used as a filename component.
     #[error("invalid key: {0:?}")]
     InvalidKey(String),
+    /// Serialization or deserialization failed.
     #[error("parse error: {0}")]
     ParseError(String),
+    /// Compression or decompression failed (zstd feature required for `.zst` files).
     #[error("compression error: {0}")]
     CompressionError(String),
+    /// The snapshot directory contains no files matching the configured name.
     #[error("no snapshot found")]
     NoSnapshotFound,
 }

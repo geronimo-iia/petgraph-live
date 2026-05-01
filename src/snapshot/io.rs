@@ -25,6 +25,34 @@ fn snapshot_path(cfg: &SnapshotConfig, sanitized: &str) -> PathBuf {
     cfg.dir.join(format!("{}-{}{}", cfg.name, sanitized, ext))
 }
 
+/// Serialize `graph` to `{cfg.dir}/{cfg.name}-{sanitized_key}.{ext}`.
+///
+/// Writes atomically (temp file + rename). After writing, the oldest snapshots
+/// beyond `cfg.keep` are deleted by mtime.
+///
+/// # Errors
+///
+/// Returns [`SnapshotError::InvalidKey`] if `cfg.key` is `None` or sanitizes to empty.
+///
+/// # Examples
+///
+/// ```rust
+/// # use petgraph::Graph;
+/// # use petgraph_live::snapshot::{Compression, SnapshotConfig, SnapshotFormat, save};
+/// # let dir = tempfile::tempdir().unwrap();
+/// let cfg = SnapshotConfig {
+///     dir: dir.path().to_path_buf(),
+///     name: "g".into(),
+///     key: Some("v1".into()),
+///     format: SnapshotFormat::Bincode,
+///     compression: Compression::None,
+///     keep: 3,
+/// };
+/// let mut g: Graph<String, ()> = Graph::new();
+/// g.add_node("A".into());
+/// save(&cfg, &g)?;
+/// # Ok::<_, petgraph_live::snapshot::SnapshotError>(())
+/// ```
 pub fn save<G>(cfg: &SnapshotConfig, graph: &G) -> Result<(), SnapshotError>
 where
     G: Serialize + petgraph::visit::NodeCount + petgraph::visit::EdgeCount,
@@ -159,6 +187,32 @@ fn read_meta_from_bytes(
     }
 }
 
+/// Deserialize and return the snapshot matching `cfg.key`, or the most recent
+/// snapshot when `cfg.key` is `None`.
+///
+/// Returns `Ok(None)` when no matching file exists (key absent or directory empty).
+///
+/// # Examples
+///
+/// ```rust
+/// # use petgraph::Graph;
+/// # use petgraph_live::snapshot::{Compression, SnapshotConfig, SnapshotFormat, save, load};
+/// # let dir = tempfile::tempdir().unwrap();
+/// # let cfg = SnapshotConfig {
+/// #     dir: dir.path().to_path_buf(),
+/// #     name: "g".into(),
+/// #     key: Some("v1".into()),
+/// #     format: SnapshotFormat::Bincode,
+/// #     compression: Compression::None,
+/// #     keep: 3,
+/// # };
+/// # let mut g: Graph<String, ()> = Graph::new();
+/// # g.add_node("A".into());
+/// # save(&cfg, &g).unwrap();
+/// let loaded: Option<Graph<String, ()>> = load(&cfg)?;
+/// assert_eq!(loaded.unwrap().node_count(), 1);
+/// # Ok::<_, petgraph_live::snapshot::SnapshotError>(())
+/// ```
 pub fn load<G>(cfg: &SnapshotConfig) -> Result<Option<G>, SnapshotError>
 where
     G: DeserializeOwned,
@@ -201,6 +255,37 @@ where
     Ok(Some(graph))
 }
 
+/// Load the matching snapshot, or call `build` and save the result if absent.
+///
+/// Falls back to `build` on [`SnapshotError::KeyNotFound`] and
+/// [`SnapshotError::NoSnapshotFound`]. Save failures are logged to stderr but
+/// do not propagate — the freshly built graph is still returned.
+///
+/// # Examples
+///
+/// ```rust
+/// # use petgraph::Graph;
+/// # use petgraph_live::snapshot::{Compression, SnapshotConfig, SnapshotFormat, load_or_build};
+/// # let dir = tempfile::tempdir().unwrap();
+/// let cfg = SnapshotConfig {
+///     dir: dir.path().to_path_buf(),
+///     name: "g".into(),
+///     key: Some("v1".into()),
+///     format: SnapshotFormat::Bincode,
+///     compression: Compression::None,
+///     keep: 3,
+/// };
+/// let mut calls = 0u32;
+/// let graph: Graph<String, ()> = load_or_build(&cfg, || {
+///     calls += 1;
+///     let mut g: Graph<String, ()> = Graph::new();
+///     g.add_node("A".into());
+///     Ok(g)
+/// })?;
+/// assert_eq!(calls, 1);
+/// assert_eq!(graph.node_count(), 1);
+/// # Ok::<_, petgraph_live::snapshot::SnapshotError>(())
+/// ```
 pub fn load_or_build<G, F>(cfg: &SnapshotConfig, build: F) -> Result<G, SnapshotError>
 where
     G: Serialize + DeserializeOwned + petgraph::visit::NodeCount + petgraph::visit::EdgeCount,
@@ -219,6 +304,34 @@ where
     }
 }
 
+/// Read snapshot metadata without deserializing the graph.
+///
+/// For bincode files only the length-prefixed header bytes are parsed.
+/// For JSON files only the `"meta"` field is extracted.
+/// Returns `Ok(None)` when no matching file exists.
+///
+/// # Examples
+///
+/// ```rust
+/// # use petgraph::Graph;
+/// # use petgraph_live::snapshot::{Compression, SnapshotConfig, SnapshotFormat, save, inspect};
+/// # let dir = tempfile::tempdir().unwrap();
+/// # let cfg = SnapshotConfig {
+/// #     dir: dir.path().to_path_buf(),
+/// #     name: "g".into(),
+/// #     key: Some("v1".into()),
+/// #     format: SnapshotFormat::Bincode,
+/// #     compression: Compression::None,
+/// #     keep: 3,
+/// # };
+/// # let mut g: Graph<String, ()> = Graph::new();
+/// # g.add_node("A".into());
+/// # save(&cfg, &g).unwrap();
+/// let meta = inspect(&cfg)?.expect("meta present");
+/// assert_eq!(meta.node_count, 1);
+/// assert_eq!(meta.key, "v1");
+/// # Ok::<_, petgraph_live::snapshot::SnapshotError>(())
+/// ```
 pub fn inspect(cfg: &SnapshotConfig) -> Result<Option<SnapshotMeta>, SnapshotError> {
     let path = match find_snapshot_file(cfg)? {
         Some(p) => p,
@@ -230,6 +343,34 @@ pub fn inspect(cfg: &SnapshotConfig) -> Result<Option<SnapshotMeta>, SnapshotErr
     Ok(Some(read_meta_from_bytes(&path, &bytes)?))
 }
 
+/// Return all snapshots in `cfg.dir` matching `cfg.name`, ordered oldest first by mtime.
+///
+/// Each entry is `(path, meta)`. The key is `None` in `cfg` for listing all files.
+///
+/// # Examples
+///
+/// ```rust
+/// # use petgraph::Graph;
+/// # use petgraph_live::snapshot::{Compression, SnapshotConfig, SnapshotFormat, save, list};
+/// # let dir = tempfile::tempdir().unwrap();
+/// # let mut cfg = SnapshotConfig {
+/// #     dir: dir.path().to_path_buf(),
+/// #     name: "g".into(),
+/// #     key: Some("v1".into()),
+/// #     format: SnapshotFormat::Bincode,
+/// #     compression: Compression::None,
+/// #     keep: 5,
+/// # };
+/// # let mut g: Graph<String, ()> = Graph::new();
+/// # g.add_node("A".into());
+/// # save(&cfg, &g).unwrap();
+/// # cfg.key = Some("v2".into());
+/// # save(&cfg, &g).unwrap();
+/// let cfg_all = SnapshotConfig { key: None, ..cfg };
+/// let entries = list(&cfg_all)?;
+/// assert_eq!(entries.len(), 2);
+/// # Ok::<_, petgraph_live::snapshot::SnapshotError>(())
+/// ```
 pub fn list(cfg: &SnapshotConfig) -> Result<Vec<(PathBuf, SnapshotMeta)>, SnapshotError> {
     let files = rotation::list_snapshot_files(&cfg.dir, &cfg.name)?;
     let mut result = Vec::new();
@@ -242,6 +383,32 @@ pub fn list(cfg: &SnapshotConfig) -> Result<Vec<(PathBuf, SnapshotMeta)>, Snapsh
     Ok(result)
 }
 
+/// Delete all snapshot files in `cfg.dir` matching `cfg.name`. Returns the count deleted.
+///
+/// # Examples
+///
+/// ```rust
+/// # use petgraph::Graph;
+/// # use petgraph_live::snapshot::{Compression, SnapshotConfig, SnapshotFormat, save, purge};
+/// # let dir = tempfile::tempdir().unwrap();
+/// # let mut cfg = SnapshotConfig {
+/// #     dir: dir.path().to_path_buf(),
+/// #     name: "g".into(),
+/// #     key: Some("v1".into()),
+/// #     format: SnapshotFormat::Bincode,
+/// #     compression: Compression::None,
+/// #     keep: 5,
+/// # };
+/// # let mut g: Graph<String, ()> = Graph::new();
+/// # g.add_node("A".into());
+/// # save(&cfg, &g).unwrap();
+/// # cfg.key = Some("v2".into());
+/// # save(&cfg, &g).unwrap();
+/// let cfg_all = SnapshotConfig { key: None, ..cfg };
+/// let deleted = purge(&cfg_all)?;
+/// assert_eq!(deleted, 2);
+/// # Ok::<_, petgraph_live::snapshot::SnapshotError>(())
+/// ```
 pub fn purge(cfg: &SnapshotConfig) -> Result<usize, SnapshotError> {
     let files = rotation::list_snapshot_files(&cfg.dir, &cfg.name)?;
     let count = files.len();
