@@ -43,3 +43,14 @@ fn test_config_serde_roundtrip() {
     assert_eq!(back.keep, 5);
     assert_eq!(back.key, None);
 }
+
+#[cfg(feature = "snapshot")]
+#[test]
+fn test_meta_new() {
+    use petgraph_live::snapshot::{Compression, SnapshotFormat, SnapshotMeta};
+    let meta = SnapshotMeta::new("sha123", SnapshotFormat::Bincode, Compression::None, 10, 5);
+    assert_eq!(meta.node_count, 10);
+    assert_eq!(meta.edge_count, 5);
+    assert_eq!(meta.key, "sha123");
+    assert!(!meta.petgraph_live_version.is_empty());
+}
