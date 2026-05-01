@@ -467,3 +467,38 @@ fn test_rotation_save_5_keep_3() {
     assert!(keys.contains(&"key4"));
     assert!(keys.contains(&"key5"));
 }
+
+#[cfg(all(feature = "snapshot", feature = "snapshot-zstd"))]
+#[test]
+fn test_zstd_roundtrip() {
+    use petgraph::Graph;
+    use petgraph_live::snapshot::{Compression, SnapshotConfig, SnapshotFormat, load, save};
+    let dir = tempfile::tempdir().unwrap();
+    let cfg = SnapshotConfig {
+        dir: dir.path().to_path_buf(),
+        name: "g".into(),
+        key: Some("zstd_key".into()),
+        format: SnapshotFormat::Bincode,
+        compression: Compression::Zstd { level: 3 },
+        keep: 3,
+    };
+    let mut graph: Graph<u32, ()> = Graph::new();
+    for i in 0..100 {
+        graph.add_node(i);
+    }
+    save(&cfg, &graph).unwrap();
+    // verify file ends with .snap.zst
+    let files: Vec<_> = std::fs::read_dir(dir.path())
+        .unwrap()
+        .filter_map(|e| e.ok())
+        .collect();
+    assert_eq!(files.len(), 1);
+    assert!(
+        files[0]
+            .file_name()
+            .to_string_lossy()
+            .ends_with(".snap.zst")
+    );
+    let loaded: Graph<u32, ()> = load(&cfg).unwrap().unwrap();
+    assert_eq!(loaded.node_count(), 100);
+}
