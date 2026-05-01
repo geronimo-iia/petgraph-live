@@ -3,3 +3,5 @@
 //! **Status: coming soon.** Implementation in progress.
 //!
 //! See [README](https://github.com/geronimo-iia/petgraph-live) for the roadmap.
+
+pub mod cache;
