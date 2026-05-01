@@ -59,9 +59,41 @@ fn test_meta_new() {
 #[test]
 fn test_error_display() {
     use petgraph_live::snapshot::SnapshotError;
-    let e = SnapshotError::KeyNotFound { key: "sha_abc".into() };
+    let e = SnapshotError::KeyNotFound {
+        key: "sha_abc".into(),
+    };
     assert!(e.to_string().contains("sha_abc"));
     let e2 = SnapshotError::InvalidKey("   ".into());
     assert!(e2.to_string().contains("invalid key"));
-    assert!(SnapshotError::NoSnapshotFound.to_string().contains("no snapshot"));
+    assert!(
+        SnapshotError::NoSnapshotFound
+            .to_string()
+            .contains("no snapshot")
+    );
+}
+
+#[cfg(feature = "snapshot")]
+#[test]
+fn test_rotation_keep_3() {
+    use petgraph_live::snapshot::rotation::{keep_n, list_snapshot_files};
+    use std::{
+        fs,
+        time::{Duration, SystemTime},
+    };
+    let dir = tempfile::tempdir().unwrap();
+    for i in 1u64..=5 {
+        let fname = format!("mygraph-key{}.snap", i);
+        let path = dir.path().join(&fname);
+        fs::write(&path, b"data").unwrap();
+        let mtime = SystemTime::UNIX_EPOCH + Duration::from_secs(i * 1000);
+        filetime::set_file_mtime(&path, filetime::FileTime::from_system_time(mtime)).unwrap();
+    }
+    let files = list_snapshot_files(dir.path(), "mygraph").unwrap();
+    assert_eq!(files.len(), 5);
+    keep_n(dir.path(), "mygraph", 3).unwrap();
+    let remaining = list_snapshot_files(dir.path(), "mygraph").unwrap();
+    assert_eq!(remaining.len(), 3);
+    for i in 3u64..=5 {
+        assert!(dir.path().join(format!("mygraph-key{}.snap", i)).exists());
+    }
 }
