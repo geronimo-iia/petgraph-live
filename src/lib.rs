@@ -5,3 +5,7 @@
 //! See [README](https://github.com/geronimo-iia/petgraph-live) for the roadmap.
 
 pub mod cache;
+pub mod connect;
+pub mod metrics;
+pub mod mst;
+pub mod shortest_path;
