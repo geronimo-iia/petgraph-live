@@ -97,3 +97,50 @@ fn test_rotation_keep_3() {
         assert!(dir.path().join(format!("mygraph-key{}.snap", i)).exists());
     }
 }
+
+#[cfg(feature = "snapshot")]
+#[test]
+fn test_save_creates_file() {
+    use petgraph::Graph;
+    use petgraph_live::snapshot::{Compression, SnapshotConfig, SnapshotFormat, save};
+    let dir = tempfile::tempdir().unwrap();
+    let cfg = SnapshotConfig {
+        dir: dir.path().to_path_buf(),
+        name: "g".into(),
+        key: Some("sha1abc".into()),
+        format: SnapshotFormat::Bincode,
+        compression: Compression::None,
+        keep: 3,
+    };
+    let mut graph: Graph<(), ()> = Graph::new();
+    graph.add_node(());
+    save(&cfg, &graph).unwrap();
+    let entries: Vec<_> = std::fs::read_dir(dir.path())
+        .unwrap()
+        .filter_map(|e| e.ok())
+        .collect();
+    assert_eq!(entries.len(), 1);
+    let name = entries[0].file_name().to_string_lossy().into_owned();
+    assert_eq!(name, "g-sha1abc.snap");
+}
+
+#[cfg(feature = "snapshot")]
+#[test]
+fn test_save_same_key_idempotent() {
+    use petgraph::Graph;
+    use petgraph_live::snapshot::{Compression, SnapshotConfig, SnapshotFormat, save};
+    let dir = tempfile::tempdir().unwrap();
+    let cfg = SnapshotConfig {
+        dir: dir.path().to_path_buf(),
+        name: "g".into(),
+        key: Some("v1".into()),
+        format: SnapshotFormat::Bincode,
+        compression: Compression::None,
+        keep: 3,
+    };
+    let graph: Graph<(), ()> = Graph::new();
+    save(&cfg, &graph).unwrap();
+    save(&cfg, &graph).unwrap();
+    let count = std::fs::read_dir(dir.path()).unwrap().count();
+    assert_eq!(count, 1);
+}

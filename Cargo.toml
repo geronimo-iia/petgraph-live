@@ -28,7 +28,7 @@ petgraph = { version = "0.8", features = [] }
 
 serde      = { version = "1",    features = ["derive"], optional = true }
 serde_json = { version = "1",    optional = true }
-bincode    = { version = "2",    optional = true }
+bincode    = { version = "2",    features = ["serde"], optional = true }
 thiserror  = { version = "2",    optional = true }
 zstd       = { version = "0.13", optional = true }
 
