@@ -9,3 +9,6 @@ pub mod connect;
 pub mod metrics;
 pub mod mst;
 pub mod shortest_path;
+
+#[cfg(feature = "snapshot")]
+pub mod snapshot;

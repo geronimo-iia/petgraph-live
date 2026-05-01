@@ -12,5 +12,26 @@ readme = "README.md"
 keywords = ["petgraph", "graph", "cache", "algorithms", "snapshot"]
 categories = ["data-structures", "algorithms"]
 
+[features]
+default = []
+snapshot = [
+    "dep:serde",
+    "dep:serde_json",
+    "dep:bincode",
+    "dep:thiserror",
+    "petgraph/serde-1",
+]
+snapshot-zstd = ["snapshot", "dep:zstd"]
+
 [dependencies]
-petgraph = "0.8"
+petgraph = { version = "0.8", features = [] }
+
+serde      = { version = "1",    features = ["derive"], optional = true }
+serde_json = { version = "1",    optional = true }
+bincode    = { version = "2",    optional = true }
+thiserror  = { version = "2",    optional = true }
+zstd       = { version = "0.13", optional = true }
+
+[dev-dependencies]
+tempfile = "3"
+filetime = "0.2"
