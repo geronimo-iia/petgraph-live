@@ -333,3 +333,106 @@ fn test_load_or_build_falls_back_on_key_not_found() {
     let v1: Graph<u32, ()> = load(&cfg).unwrap().unwrap();
     assert_eq!(v1.node_count(), 0);
 }
+
+#[cfg(feature = "snapshot")]
+#[test]
+fn test_inspect_reads_meta_without_graph() {
+    use petgraph::Graph;
+    use petgraph_live::snapshot::{Compression, SnapshotConfig, SnapshotFormat, inspect, save};
+    let dir = tempfile::tempdir().unwrap();
+    let cfg = SnapshotConfig {
+        dir: dir.path().to_path_buf(),
+        name: "g".into(),
+        key: Some("sha1".into()),
+        format: SnapshotFormat::Bincode,
+        compression: Compression::None,
+        keep: 3,
+    };
+    let mut graph: Graph<u32, ()> = Graph::new();
+    graph.add_node(1);
+    graph.add_node(2);
+    save(&cfg, &graph).unwrap();
+    let meta = inspect(&cfg).unwrap().unwrap();
+    assert_eq!(meta.node_count, 2);
+    assert_eq!(meta.key, "sha1");
+}
+
+#[cfg(feature = "snapshot")]
+#[test]
+fn test_inspect_none_key_most_recent() {
+    use petgraph::Graph;
+    use petgraph_live::snapshot::{Compression, SnapshotConfig, SnapshotFormat, inspect, save};
+    use std::{thread, time::Duration};
+    let dir = tempfile::tempdir().unwrap();
+    let mut cfg = SnapshotConfig {
+        dir: dir.path().to_path_buf(),
+        name: "g".into(),
+        key: Some("v1".into()),
+        format: SnapshotFormat::Bincode,
+        compression: Compression::None,
+        keep: 10,
+    };
+    let g1: Graph<u32, ()> = Graph::new();
+    save(&cfg, &g1).unwrap();
+    thread::sleep(Duration::from_millis(10));
+    cfg.key = Some("v2".into());
+    let mut g2: Graph<u32, ()> = Graph::new();
+    g2.add_node(1);
+    save(&cfg, &g2).unwrap();
+    cfg.key = None;
+    let meta = inspect(&cfg).unwrap().unwrap();
+    assert_eq!(meta.key, "v2");
+}
+
+#[cfg(feature = "snapshot")]
+#[test]
+fn test_list_sorted_oldest_first() {
+    use petgraph::Graph;
+    use petgraph_live::snapshot::{Compression, SnapshotConfig, SnapshotFormat, list, save};
+    use std::{thread, time::Duration};
+    let dir = tempfile::tempdir().unwrap();
+    let cfg_base = SnapshotConfig {
+        dir: dir.path().to_path_buf(),
+        name: "g".into(),
+        key: None,
+        format: SnapshotFormat::Bincode,
+        compression: Compression::None,
+        keep: 10,
+    };
+    let g: Graph<u32, ()> = Graph::new();
+    for key in &["k1", "k2", "k3"] {
+        let mut cfg = cfg_base.clone();
+        cfg.key = Some(key.to_string());
+        save(&cfg, &g).unwrap();
+        thread::sleep(Duration::from_millis(10));
+    }
+    let entries = list(&cfg_base).unwrap();
+    assert_eq!(entries.len(), 3);
+    assert_eq!(entries[0].1.key, "k1");
+    assert_eq!(entries[2].1.key, "k3");
+}
+
+#[cfg(feature = "snapshot")]
+#[test]
+fn test_purge_deletes_all() {
+    use petgraph::Graph;
+    use petgraph_live::snapshot::{Compression, SnapshotConfig, SnapshotFormat, purge, save};
+    let dir = tempfile::tempdir().unwrap();
+    let cfg_base = SnapshotConfig {
+        dir: dir.path().to_path_buf(),
+        name: "g".into(),
+        key: None,
+        format: SnapshotFormat::Bincode,
+        compression: Compression::None,
+        keep: 10,
+    };
+    let g: Graph<u32, ()> = Graph::new();
+    for key in &["a", "b", "c", "d"] {
+        let mut cfg = cfg_base.clone();
+        cfg.key = Some(key.to_string());
+        save(&cfg, &g).unwrap();
+    }
+    let count = purge(&cfg_base).unwrap();
+    assert_eq!(count, 4);
+    assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 0);
+}
