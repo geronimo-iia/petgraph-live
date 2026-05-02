@@ -375,3 +375,44 @@ fn test_rebuild_forces_new_graph() {
     assert!(!Arc::ptr_eq(&g1, &g2), "get() after rebuild must return new Arc");
     drop(c2); // silence unused warning
 }
+
+#[cfg(feature = "snapshot")]
+#[test]
+fn test_concurrent_get() {
+    use petgraph::Graph;
+    use petgraph_live::{
+        live::{GraphState, GraphStateConfig},
+        snapshot::{Compression, SnapshotConfig, SnapshotFormat},
+    };
+    use std::sync::Arc as StdArc;
+    use std::thread;
+    let dir = tempfile::tempdir().unwrap();
+    let snap = SnapshotConfig {
+        dir: dir.path().to_path_buf(),
+        name: "g".into(),
+        key: None,
+        format: SnapshotFormat::Bincode,
+        compression: Compression::None,
+        keep: 3,
+    };
+    let state: GraphState<Graph<u32, ()>> = GraphState::builder(GraphStateConfig::new(snap))
+        .key_fn(|| Ok("v1".into()))
+        .build_fn(|| {
+            let mut g = Graph::new();
+            for i in 0..1024 { g.add_node(i); }
+            Ok(g)
+        })
+        .init()
+        .unwrap();
+    let state = StdArc::new(state);
+    let handles: Vec<_> = (0..8).map(|_| {
+        let s = StdArc::clone(&state);
+        thread::spawn(move || {
+            for _ in 0..100 {
+                let g = s.get().unwrap();
+                assert_eq!(g.node_count(), 1024);
+            }
+        })
+    }).collect();
+    for h in handles { h.join().unwrap(); }
+}
