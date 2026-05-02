@@ -162,7 +162,7 @@ snapshot::list(&cfg)                          // -> Result<Vec<(PathBuf, Snapsho
 snapshot::purge(&cfg)                         // -> Result<usize, SnapshotError>
 ```
 
-`inspect` reads only the metadata header — graph bytes never loaded.
+`inspect` reads only the metadata header; for uncompressed bincode, graph bytes are never read from disk. `list` follows the same pattern.
 
 ### SnapshotMeta
 

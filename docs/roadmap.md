@@ -43,7 +43,7 @@ All four modules. No breaking changes expected after this milestone.
 | -------------------------------------------------------------- | ------------------------------------------------------------ |
 | `snapshot-lz4` sub-feature — [spec](specifications/spec-snapshot-lz4.md) / [plan](brainstorming/plan-snapshot-lz4.md) | Faster decompression than zstd; pure Rust (`lz4_flex`) | **done** |
 | Schema versioning helper                                       | `SnapshotMeta::petgraph_live_version` mismatch → caller hook |
-| `list` + `inspect` without loading graph body (JSON streaming) | Skip `"graph"` field entirely using streaming deserializer   |
+| `list` + `inspect` without graph body — [spec](specifications/spec-snapshot-lazy-meta.md) / [plan](brainstorming/plan-snapshot-lazy-meta.md) | Bincode: partial file read; JSON: `MetaOnly` serde skip | **done** |
 
 
 ## v0.4.0 — Extended algorithms
