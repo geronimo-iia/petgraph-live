@@ -39,3 +39,7 @@ filetime = "0.2"
 [[example]]
 name = "snapshot_basic"
 required-features = ["snapshot"]
+
+[[example]]
+name = "live_basic"
+required-features = ["snapshot"]
