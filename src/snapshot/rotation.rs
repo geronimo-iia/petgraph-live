@@ -5,7 +5,14 @@ use crate::snapshot::error::SnapshotError;
 /// Return all snapshot files for `name` in `dir`, sorted ascending by mtime (oldest first).
 pub fn list_snapshot_files(dir: &Path, name: &str) -> Result<Vec<PathBuf>, SnapshotError> {
     let prefix = format!("{}-", name);
-    let extensions = [".snap", ".snap.zst", ".json", ".json.zst"];
+    let extensions = [
+        ".snap",
+        ".snap.zst",
+        ".snap.lz4",
+        ".json",
+        ".json.zst",
+        ".json.lz4",
+    ];
 
     let mut entries: Vec<(std::time::SystemTime, PathBuf)> = std::fs::read_dir(dir)?
         .filter_map(|e| e.ok())

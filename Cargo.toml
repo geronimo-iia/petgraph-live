@@ -22,6 +22,7 @@ snapshot = [
     "petgraph/serde-1",
 ]
 snapshot-zstd = ["snapshot", "dep:zstd"]
+snapshot-lz4  = ["snapshot", "dep:lz4_flex"]
 
 [dependencies]
 petgraph = { version = "0.8", features = [] }
@@ -31,6 +32,7 @@ serde_json = { version = "1",    optional = true }
 bincode    = { version = "2",    features = ["serde"], optional = true }
 thiserror  = { version = "2",    optional = true }
 zstd       = { version = "0.13", optional = true }
+lz4_flex   = { version = "0.13", optional = true }
 
 [dev-dependencies]
 tempfile = "3"

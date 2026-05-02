@@ -24,6 +24,10 @@ pub enum Compression {
         /// Zstd compression level (1–22). Typical default: 3.
         level: i32,
     },
+    /// LZ4 compression. Requires the `snapshot-lz4` feature.
+    #[cfg_attr(docsrs, doc(cfg(feature = "snapshot-lz4")))]
+    #[cfg(feature = "snapshot-lz4")]
+    Lz4,
 }
 
 /// Configuration for snapshot save/load operations.
