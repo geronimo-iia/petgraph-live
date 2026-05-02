@@ -93,13 +93,7 @@ pub(crate) fn save_any<G: Serialize>(cfg: &SnapshotConfig, graph: &G) -> Result<
         .ok_or_else(|| SnapshotError::InvalidKey("None key in save".into()))?;
     let sanitized = sanitize_key(key)?;
 
-    let meta = SnapshotMeta::new(
-        key,
-        cfg.format.clone(),
-        cfg.compression.clone(),
-        0,
-        0,
-    );
+    let meta = SnapshotMeta::new(key, cfg.format.clone(), cfg.compression.clone(), 0, 0);
 
     let bytes = serialize_graph(cfg, &meta, graph)?;
     let bytes = compress(cfg, bytes)?;
