@@ -11,6 +11,7 @@ Each document covers: purpose, public API, implementation constraints, and test 
 | [spec-snapshot](spec-snapshot.md)     | `snapshot` (feature-gated)                   |
 | [spec-live](spec-live.md)             | `live::GraphState<G>` (feature-gated)        |
 | [spec-snapshot-lz4](spec-snapshot-lz4.md) | `snapshot-lz4` compression sub-feature  |
+| [spec-snapshot-lazy-meta](spec-snapshot-lazy-meta.md) | `inspect`/`list` without loading graph body |
 
 ## Feature flags
 
