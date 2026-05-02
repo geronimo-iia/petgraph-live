@@ -412,9 +412,7 @@ pub fn inspect(cfg: &SnapshotConfig) -> Result<Option<SnapshotMeta>, SnapshotErr
         None => return Ok(None),
     };
 
-    let raw = std::fs::read(&path)?;
-    let bytes = decompress(&path, raw)?;
-    Ok(Some(read_meta_from_bytes(&path, &bytes)?))
+    Ok(Some(read_meta_from_file(&path)?))
 }
 
 /// Return all snapshots in `cfg.dir` matching `cfg.name`, ordered oldest first by mtime.
@@ -449,9 +447,7 @@ pub fn list(cfg: &SnapshotConfig) -> Result<Vec<(PathBuf, SnapshotMeta)>, Snapsh
     let files = rotation::list_snapshot_files(&cfg.dir, &cfg.name)?;
     let mut result = Vec::new();
     for path in files {
-        let raw = std::fs::read(&path)?;
-        let bytes = decompress(&path, raw)?;
-        let meta = read_meta_from_bytes(&path, &bytes)?;
+        let meta = read_meta_from_file(&path)?;
         result.push((path, meta));
     }
     Ok(result)
