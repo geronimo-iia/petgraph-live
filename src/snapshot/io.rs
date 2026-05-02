@@ -213,8 +213,8 @@ fn read_meta_from_bytes(
 ) -> Result<SnapshotMeta, SnapshotError> {
     let pname = path.to_string_lossy();
     if pname.contains(".json") {
-        let wrapper: MetaOnly = serde_json::from_slice(bytes)
-            .map_err(|e| SnapshotError::ParseError(e.to_string()))?;
+        let wrapper: MetaOnly =
+            serde_json::from_slice(bytes).map_err(|e| SnapshotError::ParseError(e.to_string()))?;
         Ok(wrapper.meta)
     } else {
         if bytes.len() < 8 {
