@@ -12,3 +12,6 @@ pub mod shortest_path;
 
 #[cfg(feature = "snapshot")]
 pub mod snapshot;
+
+#[cfg(feature = "snapshot")]
+pub mod live;
