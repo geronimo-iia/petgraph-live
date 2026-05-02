@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- `inspect()` and `list()` skip graph bytes for uncompressed bincode (partial file read); JSON path uses `MetaOnly` serde struct, avoids `G::deserialize`
+
 ### Added
 - `snapshot-lz4` feature — LZ4 compression via `lz4_flex` (pure Rust); `Compression::Lz4` variant; files: `.snap.lz4` / `.json.lz4`
 
