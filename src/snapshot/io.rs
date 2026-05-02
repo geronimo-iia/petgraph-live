@@ -202,20 +202,20 @@ fn find_snapshot_file(cfg: &SnapshotConfig) -> Result<Option<PathBuf>, SnapshotE
     }
 }
 
+#[derive(serde::Deserialize)]
+struct MetaOnly {
+    meta: SnapshotMeta,
+}
+
 fn read_meta_from_bytes(
     path: &std::path::Path,
     bytes: &[u8],
 ) -> Result<SnapshotMeta, SnapshotError> {
     let pname = path.to_string_lossy();
     if pname.contains(".json") {
-        let val: serde_json::Value =
-            serde_json::from_slice(bytes).map_err(|e| SnapshotError::ParseError(e.to_string()))?;
-        serde_json::from_value(
-            val.get("meta")
-                .ok_or_else(|| SnapshotError::ParseError("missing 'meta' field".into()))?
-                .clone(),
-        )
-        .map_err(|e| SnapshotError::ParseError(e.to_string()))
+        let wrapper: MetaOnly = serde_json::from_slice(bytes)
+            .map_err(|e| SnapshotError::ParseError(e.to_string()))?;
+        Ok(wrapper.meta)
     } else {
         if bytes.len() < 8 {
             return Err(SnapshotError::ParseError("file too short".into()));
