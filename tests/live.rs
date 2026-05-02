@@ -181,3 +181,53 @@ fn test_init_snapshot_key_mismatch_rebuilds() {
     let g = state.get().unwrap();
     assert_eq!(g.node_count(), 7);
 }
+
+#[cfg(feature = "snapshot")]
+#[test]
+fn test_get_returns_cached() {
+    use petgraph::Graph;
+    use petgraph_live::{
+        live::{GraphState, GraphStateConfig},
+        snapshot::{Compression, SnapshotConfig, SnapshotFormat},
+    };
+    use std::sync::Arc;
+    let dir = tempfile::tempdir().unwrap();
+    let snap = SnapshotConfig {
+        dir: dir.path().to_path_buf(), name: "g".into(), key: None,
+        format: SnapshotFormat::Bincode, compression: Compression::None, keep: 3,
+    };
+    let state: GraphState<Graph<u32, ()>> = GraphState::builder(GraphStateConfig::new(snap))
+        .key_fn(|| Ok("v1".into()))
+        .build_fn(|| {
+            let mut g = Graph::new();
+            g.add_node(1u32);
+            Ok(g)
+        })
+        .init()
+        .unwrap();
+    let g1 = state.get().unwrap();
+    let g2 = state.get().unwrap();
+    assert!(Arc::ptr_eq(&g1, &g2), "get() must return same Arc on repeated calls");
+}
+
+#[cfg(feature = "snapshot")]
+#[test]
+fn test_current_key_and_generation() {
+    use petgraph::Graph;
+    use petgraph_live::{
+        live::{GraphState, GraphStateConfig},
+        snapshot::{Compression, SnapshotConfig, SnapshotFormat},
+    };
+    let dir = tempfile::tempdir().unwrap();
+    let snap = SnapshotConfig {
+        dir: dir.path().to_path_buf(), name: "g".into(), key: None,
+        format: SnapshotFormat::Bincode, compression: Compression::None, keep: 3,
+    };
+    let state: GraphState<Graph<u32, ()>> = GraphState::builder(GraphStateConfig::new(snap))
+        .key_fn(|| Ok("sha1abc".into()))
+        .build_fn(|| Ok(Graph::new()))
+        .init()
+        .unwrap();
+    assert_eq!(state.current_key(), "sha1abc");
+    assert_eq!(state.generation(), 1);
+}
