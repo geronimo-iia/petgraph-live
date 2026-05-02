@@ -1,6 +1,6 @@
 # petgraph-live — Roadmap
 
-**Current status:** v0.2.0 implemented. All four modules done; release pending.
+**Current status:** v0.3.0 released. Snapshot improvements complete.
 
 
 ## v0.2.0 — Core
