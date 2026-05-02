@@ -1,6 +1,6 @@
 # petgraph-live — API Design
 
-**Version target:** 0.1.0
+**Version target:** 0.3.0
 
 ## Crate structure
 
@@ -247,7 +247,7 @@ state.generation()   // -> u64 (process-lifetime counter)
 (microseconds). Concurrent `get()` callers are never blocked during a rebuild.
 
 Two concurrent `get_fresh()` callers detecting a stale key both call `build_fn`
-(last writer wins). Acceptable for v0.1 — coalescing deferred to v0.2.
+(last writer wins). Coalescing deferred to a future version.
 
 ## Error handling
 
