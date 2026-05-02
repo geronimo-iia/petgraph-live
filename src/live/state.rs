@@ -1,5 +1,5 @@
 use crate::snapshot::SnapshotError;
-use crate::live::GraphStateConfig;
+use super::GraphStateConfig;
 
 pub struct GraphState<G> {
     _phantom: std::marker::PhantomData<G>,
