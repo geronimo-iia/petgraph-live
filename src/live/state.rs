@@ -7,11 +7,8 @@ use super::GraphStateConfig;
 
 pub struct GraphState<G> {
     cache:    GenerationCache<G>,
-    #[allow(dead_code)] // used by get_fresh/rebuild in later tasks
     config:   GraphStateConfig,
-    #[allow(dead_code)] // used by get_fresh/rebuild in later tasks
     key_fn:   Arc<dyn Fn() -> Result<String, SnapshotError> + Send + Sync>,
-    #[allow(dead_code)] // used by get_fresh/rebuild in later tasks
     build_fn: Arc<dyn Fn() -> Result<G, SnapshotError> + Send + Sync>,
     inner:    RwLock<GraphStateInner>,
 }
@@ -46,6 +43,36 @@ impl<G: Send + Sync + 'static> GraphState<G> {
 
     pub fn generation(&self) -> u64 {
         self.inner.read().unwrap().generation
+    }
+}
+
+impl<G: serde::Serialize + serde::de::DeserializeOwned + Send + Sync + 'static> GraphState<G> {
+    pub fn get_fresh(&self) -> Result<Arc<G>, SnapshotError> {
+        let new_key = (self.key_fn)()?;
+        {
+            let inner = self.inner.read().unwrap();
+            if new_key == inner.current_key {
+                let cur_gen = inner.generation;
+                drop(inner);
+                return self.cache.get_or_build(cur_gen, || Err(SnapshotError::NoSnapshotFound));
+            }
+        }
+        // Key changed — build outside any lock
+        let graph = (self.build_fn)()?;
+        // Save snapshot
+        let mut save_cfg = self.config.snapshot.clone();
+        save_cfg.key = Some(new_key.clone());
+        save_any(&save_cfg, &graph)?;
+        // Write-lock: bump generation, update key
+        let new_gen = {
+            let mut inner = self.inner.write().unwrap();
+            inner.generation += 1;
+            inner.current_key = new_key;
+            inner.generation
+        };
+        // Store in cache
+        self.cache.invalidate();
+        self.cache.get_or_build(new_gen, || Ok::<G, SnapshotError>(graph))
     }
 }
 

@@ -231,3 +231,110 @@ fn test_current_key_and_generation() {
     assert_eq!(state.current_key(), "sha1abc");
     assert_eq!(state.generation(), 1);
 }
+
+#[cfg(feature = "snapshot")]
+#[test]
+fn test_get_fresh_same_key_no_rebuild() {
+    use petgraph::Graph;
+    use petgraph_live::{
+        live::{GraphState, GraphStateConfig},
+        snapshot::{Compression, SnapshotConfig, SnapshotFormat},
+    };
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicU32, Ordering};
+    let dir = tempfile::tempdir().unwrap();
+    let call_count = Arc::new(AtomicU32::new(0));
+    let cc = Arc::clone(&call_count);
+    let snap = SnapshotConfig {
+        dir: dir.path().to_path_buf(), name: "g".into(), key: None,
+        format: SnapshotFormat::Bincode, compression: Compression::None, keep: 3,
+    };
+    let state: GraphState<Graph<u32, ()>> = GraphState::builder(GraphStateConfig::new(snap))
+        .key_fn(|| Ok("v1".into()))
+        .build_fn(move || {
+            cc.fetch_add(1, Ordering::SeqCst);
+            Ok(Graph::new())
+        })
+        .init()
+        .unwrap();
+    assert_eq!(call_count.load(Ordering::SeqCst), 1, "build_fn called once at init");
+    let _ = state.get_fresh().unwrap();
+    assert_eq!(call_count.load(Ordering::SeqCst), 1, "build_fn not called again: same key");
+}
+
+#[cfg(feature = "snapshot")]
+#[test]
+fn test_get_fresh_new_key_triggers_rebuild() {
+    use petgraph::Graph;
+    use petgraph_live::{
+        live::{GraphState, GraphStateConfig},
+        snapshot::{Compression, SnapshotConfig, SnapshotFormat},
+    };
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicU32, Ordering};
+    let dir = tempfile::tempdir().unwrap();
+    let call_count = Arc::new(AtomicU32::new(0));
+    let cc = Arc::clone(&call_count);
+    let key_counter = Arc::new(AtomicU32::new(0));
+    let kc = Arc::clone(&key_counter);
+    let snap = SnapshotConfig {
+        dir: dir.path().to_path_buf(), name: "g".into(), key: None,
+        format: SnapshotFormat::Bincode, compression: Compression::None, keep: 3,
+    };
+    let state: GraphState<Graph<u32, ()>> = GraphState::builder(GraphStateConfig::new(snap))
+        .key_fn(move || {
+            let n = kc.fetch_add(1, Ordering::SeqCst);
+            Ok(format!("v{n}"))
+        })
+        .build_fn(move || {
+            cc.fetch_add(1, Ordering::SeqCst);
+            Ok(Graph::new())
+        })
+        .init()
+        .unwrap();
+    // init called key_fn once (returns "v0") and build_fn once
+    assert_eq!(call_count.load(Ordering::SeqCst), 1);
+    assert_eq!(state.current_key(), "v0");
+    // get_fresh calls key_fn again → "v1" ≠ "v0" → rebuild
+    let _ = state.get_fresh().unwrap();
+    assert_eq!(call_count.load(Ordering::SeqCst), 2);
+    assert_eq!(state.current_key(), "v1");
+}
+
+#[cfg(feature = "snapshot")]
+#[test]
+fn test_get_fresh_saves_snapshot() {
+    use petgraph::Graph;
+    use petgraph_live::{
+        live::{GraphState, GraphStateConfig},
+        snapshot::{Compression, SnapshotConfig, SnapshotFormat},
+    };
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicU32, Ordering};
+    let dir = tempfile::tempdir().unwrap();
+    let key_counter = Arc::new(AtomicU32::new(0));
+    let kc = Arc::clone(&key_counter);
+    let snap = SnapshotConfig {
+        dir: dir.path().to_path_buf(), name: "g".into(), key: None,
+        format: SnapshotFormat::Bincode, compression: Compression::None, keep: 10,
+    };
+    let state: GraphState<Graph<u32, ()>> = GraphState::builder(GraphStateConfig::new(snap))
+        .key_fn(move || {
+            let n = kc.fetch_add(1, Ordering::SeqCst);
+            Ok(format!("key{n}"))
+        })
+        .build_fn(|| Ok(Graph::new()))
+        .init()
+        .unwrap();
+    // There's 1 snapshot from init (key0)
+    let before: Vec<_> = std::fs::read_dir(dir.path()).unwrap()
+        .filter_map(|e| e.ok())
+        .collect();
+    assert_eq!(before.len(), 1);
+    // get_fresh → new key → rebuild → new snapshot
+    let _ = state.get_fresh().unwrap();
+    let after: Vec<_> = std::fs::read_dir(dir.path()).unwrap()
+        .filter_map(|e| e.ok())
+        .collect();
+    assert_eq!(after.len(), 2, "get_fresh must save new snapshot for new key");
+}
