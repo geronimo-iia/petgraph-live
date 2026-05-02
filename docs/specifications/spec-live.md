@@ -1,6 +1,6 @@
 ---
 title: "live module"
-summary: "GraphState<G> — composites GenerationCache and snapshot into a single managed lifecycle with cold/warm start, stale-key rebuild, and snapshot rotation."
+summary: "GraphState<G> — composes GenerationCache and snapshot into a single managed lifecycle with cold/warm start, stale-key rebuild, and snapshot rotation."
 read_when:
   - Implementing or modifying GraphState or GraphStateBuilder
   - Understanding init/get/get_fresh/rebuild flows
@@ -17,17 +17,12 @@ last_updated: "2026-05-02"
 **Status:** implemented
 **Depends on:** `cache` module, `snapshot` module
 
----
-
 ## Purpose
 
 `GraphState<G>` composes `GenerationCache<G>` and the `snapshot` module into a
 single managed lifecycle. The caller supplies two functions: how to compute the
 current validity key, and how to build the graph from scratch. `GraphState`
-handles everything else: cold start, warm start from snapshot, cache hit on hot
-path, rebuild on key change, snapshot save after rebuild, rotation.
-
----
+handles cold start, warm start from snapshot, cache hit on hot path, rebuild on key change, snapshot save after rebuild, and rotation.
 
 ## Scope
 
@@ -45,41 +40,16 @@ Out of scope:
 - Multiple concurrent rebuild coalescing (v0.2)
 - TTL-based expiry
 
----
-
 ## Concurrency model
 
-`build_fn` runs outside any lock. Only the cache-swap step (store new `Arc` +
-bump generation in `GenerationCache`) acquires a write lock. Duration of write
-lock: microseconds (pointer swap). Concurrent `get()` callers are never blocked
-during a rebuild — they continue reading the stale `Arc` until the swap
-completes. There is no `serve_stale_during_rebuild` toggle; this behaviour is
-structural and always active.
+`build_fn` runs outside any lock. Only the cache-swap (store new `Arc` + bump generation) acquires a write lock, for microseconds. Concurrent `get()` callers read the stale `Arc` until the swap completes — no blocking.
 
-Two concurrent callers both detecting a stale key will both call `build_fn`.
-Both results are identical (idempotent build). The last writer wins the
-cache-swap. Acceptable for v0.1 — coalescing deferred to v0.2.
-
-### Preventing redundant builds — caller responsibility
-
-If `build_fn` is expensive and concurrent calls to `get_fresh()` must not
-duplicate work, the caller serializes at a higher level:
+Two concurrent callers both detecting a stale key will each call `build_fn`. Last writer wins. Coalescing deferred to v0.2. Callers who must prevent duplicate builds serialize externally:
 
 ```rust
-// Caller-side rebuild guard — one mutex, not inside GraphState.
 let _guard = rebuild_mutex.lock().unwrap();
 state.get_fresh()
 ```
-
-`get()` (hot path) never acquires this mutex — only the rebuild path does.
-This keeps `GenerationCache` and `GraphState` lock-free on reads while
-preventing redundant builds without any complexity inside the crate.
-
-In a project, `get_fresh()` is called from a single file-watch thread — the
-race window does not exist in practice. The pattern above is for callers
-where multiple threads may trigger a stale-key check simultaneously.
-
----
 
 ## Public types
 
@@ -99,21 +69,6 @@ impl GraphStateConfig {
 `GraphStateBuilder::init()` returns `Err` if `snapshot.key` is `Some`.
 
 ### `GraphState<G>`
-
-```rust
-pub struct GraphState<G> {
-    cache:    GenerationCache<G>,
-    config:   GraphStateConfig,
-    key_fn:   Arc<dyn Fn() -> Result<String, SnapshotError> + Send + Sync>,
-    build_fn: Arc<dyn Fn() -> Result<G, SnapshotError> + Send + Sync>,
-    inner:    RwLock<GraphStateInner>,
-}
-
-struct GraphStateInner {
-    current_key: String,
-    generation:  u64,
-}
-```
 
 ```rust
 impl<G> GraphState<G>
@@ -168,23 +123,16 @@ where
 }
 ```
 
----
-
 ## Init flow
 
 ```
 init():
   1. Validate: key_fn set, build_fn set, snapshot.key == None → else Err
-  2. Determine current_key:
-       use builder.current_key if provided
-       else call key_fn()
-  3. Try load(snapshot_cfg with key = Some(current_key))
-       Ok(Some(g))   → warm start, build_called = false
-       Ok(None) / Err(KeyNotFound) → call build_fn() → g, build_called = true
-  4. If build_called: save(snapshot_cfg with key = Some(current_key), &g)
-  5. Store g in GenerationCache with generation = 1
-  6. Return GraphState { cache, config, key_fn, build_fn,
-         inner: RwLock::new(GraphStateInner { current_key, generation: 1 }) }
+  2. current_key = builder.current_key if provided, else key_fn()
+  3. load(snapshot_cfg with key = Some(current_key))
+       Ok(Some(g))                      → warm start
+       Ok(None) | Err(KeyNotFound)      → build_fn() → g, then save
+  4. Store g in GenerationCache at generation = 1
 ```
 
 ## `get_fresh` flow
@@ -192,28 +140,23 @@ init():
 ```
 get_fresh():
   1. new_key = key_fn()
-  2. Read-lock inner: if new_key == current_key → return get() [cache hit, no rebuild]
-  3. Drop read lock
-  4. build_fn() → g  [outside any lock]
-  5. save(snapshot_cfg with key = Some(new_key), &g)
-  6. Write-lock inner: bump generation, set current_key = new_key
-  7. cache.invalidate(); cache.get_or_build(generation, || Ok(g.clone()))
-  8. Return Ok(Arc<g>)
+  2. Read-lock: if new_key == current_key → return get()
+  3. Drop lock; build_fn() → g  [outside any lock]
+  4. save(new_key, &g)
+  5. Write-lock: bump generation, current_key = new_key
+  6. cache.invalidate(); cache.get_or_build(generation, || Ok(g))
 ```
 
 ## `rebuild` flow
 
 ```
 rebuild():
-  1. current_key = key_fn()  [or reuse inner.current_key if key_fn not changed]
+  1. current_key = key_fn()
   2. build_fn() → g
-  3. save(snapshot_cfg with key = Some(current_key), &g)
+  3. save(current_key, &g)
   4. Write-lock: bump generation
   5. cache.invalidate(); store new Arc
-  6. Return Ok(Arc<g>)
 ```
-
----
 
 ## Files
 
@@ -224,8 +167,6 @@ rebuild():
 | `src/live/state.rs`      | `GraphState<G>`, `GraphStateBuilder<G>`, `GraphStateInner` |
 | `tests/live.rs`          | Integration tests                                          |
 | `examples/live_basic.rs` | End-to-end demo                                            |
-
----
 
 ## Test matrix
 
