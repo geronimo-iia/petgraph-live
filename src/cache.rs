@@ -27,6 +27,7 @@ pub struct GenerationCache<G> {
 }
 
 impl<G> GenerationCache<G> {
+    /// Create an empty cache with no cached graph.
     pub fn new() -> Self {
         GenerationCache {
             inner: RwLock::new(None),
