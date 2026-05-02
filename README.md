@@ -1,6 +1,6 @@
 # petgraph-live
 
-> **Status: v0.2.0.** All modules implemented. API not yet stable.
+> **Status: v0.3.0.** All modules implemented. API not yet stable.
 
 Graph cache, snapshot, and algorithms for [`petgraph`](https://docs.rs/petgraph) 0.8.
 
@@ -53,13 +53,18 @@ With snapshot (requires `features = ["snapshot"]`):
 
 ```rust
 use petgraph_live::live::{GraphState, GraphStateConfig};
-use petgraph_live::snapshot::SnapshotConfig;
+use petgraph_live::snapshot::{Compression, SnapshotConfig, SnapshotFormat};
+
+// LZ4 compression — requires `features = ["snapshot-lz4"]`
+#[cfg(feature = "snapshot-lz4")]
+let compression = Compression::Lz4;
 
 let config = GraphStateConfig::new(SnapshotConfig {
     dir: "/tmp/my-cache".into(),
     name: "wiki".into(),
     keep: 3,
-    format: Default::default(),
+    format: SnapshotFormat::Bincode,
+    compression: Compression::None,
     key: None,  // managed internally
 });
 
@@ -83,16 +88,16 @@ let graph = state.get_fresh()?;     // checks key, rebuilds if stale
 
 ```toml
 [dependencies]
-petgraph-live = "0.2"
+petgraph-live = "0.3"
 
 # With snapshot:
-petgraph-live = { version = "0.2", features = ["snapshot"] }
+petgraph-live = { version = "0.3", features = ["snapshot"] }
 
 # With zstd compression:
-petgraph-live = { version = "0.2", features = ["snapshot-zstd"] }
+petgraph-live = { version = "0.3", features = ["snapshot-zstd"] }
 
 # With LZ4 compression (faster decompression, larger files):
-petgraph-live = { version = "0.2", features = ["snapshot-lz4"] }
+petgraph-live = { version = "0.3", features = ["snapshot-lz4"] }
 ```
 
 ## Motivation
