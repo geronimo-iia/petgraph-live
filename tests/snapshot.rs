@@ -468,6 +468,82 @@ fn test_rotation_save_5_keep_3() {
     assert!(keys.contains(&"key5"));
 }
 
+#[cfg(all(feature = "snapshot", feature = "snapshot-lz4"))]
+#[test]
+fn test_lz4_roundtrip() {
+    use petgraph::Graph;
+    use petgraph_live::snapshot::{Compression, SnapshotConfig, SnapshotFormat, load, save};
+    let dir = tempfile::tempdir().unwrap();
+    let cfg = SnapshotConfig {
+        dir: dir.path().to_path_buf(),
+        name: "g".into(),
+        key: Some("lz4_key".into()),
+        format: SnapshotFormat::Bincode,
+        compression: Compression::Lz4,
+        keep: 3,
+    };
+    let mut graph: Graph<u32, ()> = Graph::new();
+    for i in 0..50 {
+        graph.add_node(i);
+    }
+    save(&cfg, &graph).unwrap();
+    let loaded: Graph<u32, ()> = load(&cfg).unwrap().unwrap();
+    assert_eq!(loaded.node_count(), 50);
+}
+
+#[cfg(all(feature = "snapshot", feature = "snapshot-lz4"))]
+#[test]
+fn test_lz4_extension() {
+    use petgraph::Graph;
+    use petgraph_live::snapshot::{Compression, SnapshotConfig, SnapshotFormat, save};
+    let dir = tempfile::tempdir().unwrap();
+    let cfg = SnapshotConfig {
+        dir: dir.path().to_path_buf(),
+        name: "g".into(),
+        key: Some("lz4ext".into()),
+        format: SnapshotFormat::Bincode,
+        compression: Compression::Lz4,
+        keep: 3,
+    };
+    let graph: Graph<u32, ()> = Graph::new();
+    save(&cfg, &graph).unwrap();
+    let files: Vec<_> = std::fs::read_dir(dir.path())
+        .unwrap()
+        .filter_map(|e| e.ok())
+        .collect();
+    assert_eq!(files.len(), 1);
+    assert!(
+        files[0]
+            .file_name()
+            .to_string_lossy()
+            .ends_with(".snap.lz4")
+    );
+}
+
+#[cfg(all(feature = "snapshot", feature = "snapshot-lz4"))]
+#[test]
+fn test_lz4_inspect() {
+    use petgraph::Graph;
+    use petgraph_live::snapshot::{Compression, SnapshotConfig, SnapshotFormat, inspect, save};
+    let dir = tempfile::tempdir().unwrap();
+    let cfg = SnapshotConfig {
+        dir: dir.path().to_path_buf(),
+        name: "g".into(),
+        key: Some("lz4meta".into()),
+        format: SnapshotFormat::Bincode,
+        compression: Compression::Lz4,
+        keep: 3,
+    };
+    let mut graph: Graph<u32, ()> = Graph::new();
+    graph.add_node(7);
+    graph.add_node(8);
+    graph.add_node(9);
+    save(&cfg, &graph).unwrap();
+    let meta = inspect(&cfg).unwrap().unwrap();
+    assert_eq!(meta.node_count, 3);
+    assert_eq!(meta.key, "lz4meta");
+}
+
 #[cfg(all(feature = "snapshot", feature = "snapshot-zstd"))]
 #[test]
 fn test_zstd_roundtrip() {
