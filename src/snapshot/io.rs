@@ -84,6 +84,36 @@ where
     Ok(())
 }
 
+/// Like [`save`] but does not require [`NodeCount`]/[`EdgeCount`]; stores 0 for both counts.
+/// Used internally by `GraphState` which may hold arbitrary graph types.
+pub(crate) fn save_any<G: Serialize>(cfg: &SnapshotConfig, graph: &G) -> Result<(), SnapshotError> {
+    let key = cfg
+        .key
+        .as_deref()
+        .ok_or_else(|| SnapshotError::InvalidKey("None key in save".into()))?;
+    let sanitized = sanitize_key(key)?;
+
+    let meta = SnapshotMeta::new(
+        key,
+        cfg.format.clone(),
+        cfg.compression.clone(),
+        0,
+        0,
+    );
+
+    let bytes = serialize_graph(cfg, &meta, graph)?;
+    let bytes = compress(cfg, bytes)?;
+
+    let final_path = snapshot_path(cfg, &sanitized);
+    let tmp_path = PathBuf::from(format!("{}.tmp", final_path.to_string_lossy()));
+
+    std::fs::write(&tmp_path, &bytes)?;
+    std::fs::rename(&tmp_path, &final_path)?;
+
+    rotation::keep_n(&cfg.dir, &cfg.name, cfg.keep)?;
+    Ok(())
+}
+
 fn serialize_graph<G: Serialize>(
     cfg: &SnapshotConfig,
     meta: &SnapshotMeta,
