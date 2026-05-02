@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `snapshot-lz4` feature — LZ4 compression via `lz4_flex` (pure Rust); `Compression::Lz4` variant; files: `.snap.lz4` / `.json.lz4`
+
 ## [0.2.0] — 2026-05-02
 
 ### Added

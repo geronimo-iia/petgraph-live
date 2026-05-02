@@ -17,6 +17,10 @@ fn extension(format: &SnapshotFormat, compression: &Compression) -> &'static str
         (SnapshotFormat::Bincode, Compression::Zstd { .. }) => ".snap.zst",
         #[cfg(feature = "snapshot-zstd")]
         (SnapshotFormat::Json, Compression::Zstd { .. }) => ".json.zst",
+        #[cfg(feature = "snapshot-lz4")]
+        (SnapshotFormat::Bincode, Compression::Lz4) => ".snap.lz4",
+        #[cfg(feature = "snapshot-lz4")]
+        (SnapshotFormat::Json, Compression::Lz4) => ".json.lz4",
     }
 }
 
@@ -139,6 +143,8 @@ fn compress(cfg: &SnapshotConfig, bytes: Vec<u8>) -> Result<Vec<u8>, SnapshotErr
         #[cfg(feature = "snapshot-zstd")]
         Compression::Zstd { level } => zstd::encode_all(std::io::Cursor::new(bytes), *level)
             .map_err(|e| SnapshotError::CompressionError(e.to_string())),
+        #[cfg(feature = "snapshot-lz4")]
+        Compression::Lz4 => Ok(lz4_flex::compress_prepend_size(&bytes)),
     }
 }
 
@@ -154,12 +160,28 @@ fn decompress(path: &std::path::Path, bytes: Vec<u8>) -> Result<Vec<u8>, Snapsho
             "zstd feature not enabled".into(),
         ));
     }
+    #[cfg(feature = "snapshot-lz4")]
+    if path.extension().is_some_and(|e| e == "lz4") {
+        return lz4_flex::decompress_size_prepended(&bytes)
+            .map_err(|e| SnapshotError::CompressionError(e.to_string()));
+    }
     Ok(bytes)
 }
 
-#[cfg(feature = "snapshot-zstd")]
+#[cfg(all(feature = "snapshot-zstd", feature = "snapshot-lz4"))]
+const SNAP_EXTENSIONS: &[&str] = &[
+    ".snap",
+    ".json",
+    ".snap.zst",
+    ".json.zst",
+    ".snap.lz4",
+    ".json.lz4",
+];
+#[cfg(all(feature = "snapshot-zstd", not(feature = "snapshot-lz4")))]
 const SNAP_EXTENSIONS: &[&str] = &[".snap", ".json", ".snap.zst", ".json.zst"];
-#[cfg(not(feature = "snapshot-zstd"))]
+#[cfg(all(not(feature = "snapshot-zstd"), feature = "snapshot-lz4"))]
+const SNAP_EXTENSIONS: &[&str] = &[".snap", ".json", ".snap.lz4", ".json.lz4"];
+#[cfg(all(not(feature = "snapshot-zstd"), not(feature = "snapshot-lz4")))]
 const SNAP_EXTENSIONS: &[&str] = &[".snap", ".json"];
 
 fn find_snapshot_file(cfg: &SnapshotConfig) -> Result<Option<PathBuf>, SnapshotError> {

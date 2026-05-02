@@ -79,6 +79,7 @@ let graph = state.get_fresh()?;     // checks key, rebuilds if stale
 | _(default)_ | `cache`, `metrics`, `connect`, `shortest_path`, `mst` |
 | `snapshot` | `snapshot`, `live` |
 | `snapshot-zstd` | zstd compression for snapshots (implies `snapshot`) |
+| `snapshot-lz4` | LZ4 compression for snapshots via `lz4_flex` (implies `snapshot`) |
 
 ```toml
 [dependencies]
@@ -87,8 +88,11 @@ petgraph-live = "0.2"
 # With snapshot:
 petgraph-live = { version = "0.2", features = ["snapshot"] }
 
-# With compression:
+# With zstd compression:
 petgraph-live = { version = "0.2", features = ["snapshot-zstd"] }
+
+# With LZ4 compression (faster decompression, larger files):
+petgraph-live = { version = "0.2", features = ["snapshot-lz4"] }
 ```
 
 ## Motivation
