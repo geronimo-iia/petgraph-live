@@ -4,3 +4,4 @@ pub mod config;
 pub mod state;
 
 pub use config::GraphStateConfig;
+pub use state::{GraphState, GraphStateBuilder};
