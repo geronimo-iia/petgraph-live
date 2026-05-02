@@ -380,8 +380,11 @@ where
 
 /// Read snapshot metadata without deserializing the graph.
 ///
-/// For bincode files only the length-prefixed header bytes are parsed.
-/// For JSON files only the `"meta"` field is extracted.
+/// For uncompressed bincode, reads only the metadata header — graph bytes are never
+/// loaded from disk. For compressed files the full file is decompressed first, but
+/// graph deserialization is still skipped. For JSON files only the `"meta"` field is
+/// extracted; `G::deserialize` is never called.
+///
 /// Returns `Ok(None)` when no matching file exists.
 ///
 /// # Examples
@@ -417,7 +420,9 @@ pub fn inspect(cfg: &SnapshotConfig) -> Result<Option<SnapshotMeta>, SnapshotErr
 
 /// Return all snapshots in `cfg.dir` matching `cfg.name`, ordered oldest first by mtime.
 ///
-/// Each entry is `(path, meta)`. The key is `None` in `cfg` for listing all files.
+/// Each entry is `(path, meta)`. Set `cfg.key = None` to list all files.
+/// For uncompressed bincode files, reads only the metadata header — graph bytes are
+/// never loaded from disk. For JSON files, `G::deserialize` is never called.
 ///
 /// # Examples
 ///

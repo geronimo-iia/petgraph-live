@@ -13,7 +13,7 @@ last_updated: "2026-05-02"
 
 **Crate:** `petgraph-live`
 **Feature flag:** `snapshot` (no new feature — improvement to existing functions)
-**Status:** pre-implementation
+**Status:** implemented
 **Depends on:** `snapshot` module (implemented)
 
 ---

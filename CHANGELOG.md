@@ -7,11 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
-- `inspect()` and `list()` skip graph bytes for uncompressed bincode (partial file read); JSON path uses `MetaOnly` serde struct, avoids `G::deserialize`
+## [0.3.0] — 2026-05-02
 
 ### Added
 - `snapshot-lz4` feature — LZ4 compression via `lz4_flex` (pure Rust); `Compression::Lz4` variant; files: `.snap.lz4` / `.json.lz4`
+- `inspect()` and `list()` no longer read graph bytes for uncompressed bincode files; JSON path skips `G::deserialize` via `MetaOnly` serde helper
 
 ## [0.2.0] — 2026-05-02
 
@@ -40,4 +40,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `SECURITY.md`, `docs/release.md`, `docs/specifications/` index,
   `docs/roadmap.md`, `docs/api-design.md`
 
+[0.3.0]: https://github.com/geronimo-iia/petgraph-live/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/geronimo-iia/petgraph-live/releases/tag/v0.2.0

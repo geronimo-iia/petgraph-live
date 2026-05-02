@@ -6,13 +6,16 @@ Published to [crates.io](https://crates.io/crates/petgraph-live).
 
 ```toml
 [dependencies]
-petgraph-live = "0.2"
+petgraph-live = "0.3"
 
 # With snapshot support:
-petgraph-live = { version = "0.2", features = ["snapshot"] }
+petgraph-live = { version = "0.3", features = ["snapshot"] }
 
 # With zstd compression:
-petgraph-live = { version = "0.2", features = ["snapshot-zstd"] }
+petgraph-live = { version = "0.3", features = ["snapshot-zstd"] }
+
+# With LZ4 compression:
+petgraph-live = { version = "0.3", features = ["snapshot-lz4"] }
 ```
 
 ## Branch Strategy
@@ -42,6 +45,8 @@ active `release/` branch if one is open.
 cargo test
 cargo test --features snapshot
 cargo test --features snapshot-zstd
+cargo test --features snapshot-lz4
+cargo test --features snapshot-zstd,snapshot-lz4
 ```
 
 ### Code quality
@@ -49,8 +54,7 @@ cargo test --features snapshot-zstd
 - [ ] All tests pass (all three feature combinations above)
 - [ ] Formatted: `cargo fmt -- --check`
 - [ ] No lint issues: `cargo clippy --all-targets --all-features -- -D warnings`
-- [ ] No vulnerabilities: `cargo audit`
-- [ ] Examples compile: `cargo build --examples --all-features`
+- [ ] Examples compile and run without panic: `cargo run --example cache_basic && cargo run --example connect && cargo run --example metrics && cargo run --example mst && cargo run --example shortest_path && cargo run --example snapshot_basic --features snapshot && cargo run --example live_basic --features snapshot`
 - [ ] Doc tests pass: `cargo test --doc --all-features`
 
 ### Documentation
@@ -70,22 +74,24 @@ cargo test --features snapshot-zstd
 ```bash
 # 1. Bump version in Cargo.toml, update CHANGELOG date
 
-# 2. Commit on release branch
+# 2. Commit on release branch, push, open PR
 git commit -am "chore: release vx.y.z"
+git push origin release/vx.y.z
+gh pr create --title "chore: release vx.y.z" --base main
 
-# 3. Merge to main, then tag
+# 3. Wait for PR CI to pass, then merge to main
 git checkout main
 git merge --no-ff release/vx.y.z
+
+# 4. Tag the merge commit and push — GitHub Actions handles publish
 git tag -a vx.y.z -m "Release vx.y.z"
 git push origin main
 git push origin vx.y.z
-
-# 4. Publish to crates.io
-cargo publish
+# GitHub Actions handles publish on tag push
 ```
 
-Tags containing `-rc` (e.g. `v0.2.0-rc1`) follow the same steps but skip
-`cargo publish` — release candidate for testing only.
+Tags containing `-rc` (e.g. `v0.3.0-rc1`) follow the same steps but the
+publish workflow will not trigger (RC tags are excluded).
 
 ## Hotfix
 

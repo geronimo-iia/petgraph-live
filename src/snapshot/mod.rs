@@ -1,11 +1,15 @@
 //! Serde-based disk persistence for petgraph graphs.
 //!
-//! Enabled with the `snapshot` feature flag. Optional zstd compression requires
-//! `snapshot-zstd`.
+//! Enabled with the `snapshot` feature flag. Optional compression:
+//! - `snapshot-zstd` — Zstd compression
+//! - `snapshot-lz4` — LZ4 compression via `lz4_flex` (pure Rust)
 //!
 //! Snapshots are stored as `{name}-{sanitized_key}.{ext}` files. The key is
 //! encoded in the filename so two saves with the same key overwrite each other.
 //! Rotation keeps the latest `keep` files by filesystem mtime.
+//!
+//! [`inspect`] and [`list`] use partial reads for uncompressed bincode files —
+//! only the `8 + meta_len` byte header is read from disk; graph bytes are never loaded.
 //!
 //! # Quick start
 //!
