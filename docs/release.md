@@ -6,13 +6,16 @@ Published to [crates.io](https://crates.io/crates/petgraph-live).
 
 ```toml
 [dependencies]
-petgraph-live = "0.2"
+petgraph-live = "0.3"
 
 # With snapshot support:
-petgraph-live = { version = "0.2", features = ["snapshot"] }
+petgraph-live = { version = "0.3", features = ["snapshot"] }
 
 # With zstd compression:
-petgraph-live = { version = "0.2", features = ["snapshot-zstd"] }
+petgraph-live = { version = "0.3", features = ["snapshot-zstd"] }
+
+# With LZ4 compression:
+petgraph-live = { version = "0.3", features = ["snapshot-lz4"] }
 ```
 
 ## Branch Strategy
@@ -42,6 +45,8 @@ active `release/` branch if one is open.
 cargo test
 cargo test --features snapshot
 cargo test --features snapshot-zstd
+cargo test --features snapshot-lz4
+cargo test --features snapshot-zstd,snapshot-lz4
 ```
 
 ### Code quality
@@ -49,7 +54,6 @@ cargo test --features snapshot-zstd
 - [ ] All tests pass (all three feature combinations above)
 - [ ] Formatted: `cargo fmt -- --check`
 - [ ] No lint issues: `cargo clippy --all-targets --all-features -- -D warnings`
-- [ ] No vulnerabilities: `cargo audit`
 - [ ] Examples compile: `cargo build --examples --all-features`
 - [ ] Doc tests pass: `cargo test --doc --all-features`
 
@@ -80,8 +84,7 @@ git tag -a vx.y.z -m "Release vx.y.z"
 git push origin main
 git push origin vx.y.z
 
-# 4. Publish to crates.io
-cargo publish
+# GitHub Actions handles publish on tag push
 ```
 
 Tags containing `-rc` (e.g. `v0.2.0-rc1`) follow the same steps but skip
