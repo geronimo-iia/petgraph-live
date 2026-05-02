@@ -233,6 +233,34 @@ fn read_meta_from_bytes(
     }
 }
 
+fn read_meta_from_file(path: &std::path::Path) -> Result<SnapshotMeta, SnapshotError> {
+    use std::io::Read;
+    let pname = path.to_string_lossy();
+    let is_compressed = pname.ends_with(".zst") || pname.ends_with(".lz4");
+    let is_json = pname.contains(".json");
+
+    if is_compressed || is_json {
+        let raw = std::fs::read(path)?;
+        let bytes = decompress(path, raw)?;
+        return read_meta_from_bytes(path, &bytes);
+    }
+
+    // Uncompressed bincode — partial read, graph bytes never loaded
+    let mut f = std::fs::File::open(path)?;
+    let mut len_buf = [0u8; 8];
+    f.read_exact(&mut len_buf)?;
+    let meta_len = u64::from_le_bytes(len_buf) as usize;
+    let mut meta_buf = vec![0u8; meta_len];
+    f.read_exact(&mut meta_buf)?;
+    // f dropped here — remaining bytes never read
+    let (meta, _) = bincode::serde::decode_from_slice::<SnapshotMeta, _>(
+        &meta_buf,
+        bincode::config::standard(),
+    )
+    .map_err(|e| SnapshotError::ParseError(e.to_string()))?;
+    Ok(meta)
+}
+
 /// Deserialize and return the snapshot matching `cfg.key`, or the most recent
 /// snapshot when `cfg.key` is `None`.
 ///
