@@ -1,10 +1,8 @@
 # petgraph-live
 
-> **Status: coming soon.** Implementation in progress. API not yet stable.
+> **Status: v0.1.0 in progress.** `cache`, `algorithms`, and `snapshot` implemented. `live` in progress. API not yet stable.
 
 Graph cache, snapshot, and algorithms for [`petgraph`](https://docs.rs/petgraph) 0.8.
-
----
 
 ## Purpose
 
@@ -16,20 +14,22 @@ the operational layer missing for long-running processes:
   a change. No redundant rebuilds in serve mode.
 
 - **Disk snapshot** — persist and restore the cached graph across process restarts.
-  Atomic writes, commit-keyed validity check, silent fallback to rebuild on
-  mismatch or corruption.
+  Atomic writes, key-based validity check, silent fallback to rebuild on
+  mismatch or corruption. Optional zstd compression.
+
+- **Managed lifecycle** — `GraphState<G>` composes cache and snapshot into a
+  single object: cold start, warm start from snapshot, stale-key rebuild, rotation.
 
 - **Graph algorithms** — unweighted metrics and connectivity analysis on
   `petgraph 0.8` graphs, with no heavy dependencies (`nalgebra`, `rand`, etc.):
-  - `metrics`: diameter, radius, eccentricity, center, periphery
+  - `metrics`: diameter, radius, eccentricity, center, periphery, girth
   - `connect`: articulation points, bridges
+  - `shortest_path`: Floyd-Warshall, Seidel APSP, BFS distances, petgraph re-exports
+  - `mst`: Prim, Borůvka, Kruskal (petgraph re-export)
 
-All algorithms work on any `DiGraph<N, E>` — no wiki or domain concepts inside
-this crate.
+All algorithms work on any `DiGraph<N, E>` — no domain concepts inside this crate.
 
----
-
-## Planned API
+## API
 
 ```rust
 use petgraph_live::cache::GenerationCache;
@@ -45,11 +45,51 @@ let d = metrics::diameter(&graph);   // longest shortest path
 let c = metrics::center(&graph);     // most central nodes
 
 // Connectivity analysis
-let ap = connect::articulation_points(&graph);  // removal disconnects graph
-let br = connect::find_bridges(&graph);          // edge removal disconnects graph
+let ap = connect::articulation_points(&graph);
+let br = connect::find_bridges(&graph);
 ```
 
----
+With snapshot (requires `features = ["snapshot"]`):
+
+```rust
+use petgraph_live::live::{GraphState, GraphStateConfig};
+use petgraph_live::snapshot::SnapshotConfig;
+
+let config = GraphStateConfig::new(SnapshotConfig {
+    dir: "/tmp/my-cache".into(),
+    name: "wiki".into(),
+    keep: 3,
+    format: Default::default(),
+    key: None,  // managed internally
+});
+
+let state = GraphState::builder(config)
+    .key_fn(|| Ok(current_git_sha()))
+    .build_fn(|| Ok(build_graph()))
+    .init()?;
+
+let graph = state.get()?;           // hot path, no key check
+let graph = state.get_fresh()?;     // checks key, rebuilds if stale
+```
+
+## Feature flags
+
+| Flag | Adds |
+|---|---|
+| _(default)_ | `cache`, `metrics`, `connect`, `shortest_path`, `mst` |
+| `snapshot` | `snapshot`, `live` |
+| `snapshot-zstd` | zstd compression for snapshots (implies `snapshot`) |
+
+```toml
+[dependencies]
+petgraph-live = "0.1"
+
+# With snapshot:
+petgraph-live = { version = "0.1", features = ["snapshot"] }
+
+# With compression:
+petgraph-live = { version = "0.1", features = ["snapshot-zstd"] }
+```
 
 ## Motivation
 
@@ -61,18 +101,13 @@ The only available alternative (`graphalgs`) is pinned to `petgraph ^0.6.5` and
 appears unmaintained (last release 2023). `petgraph-live` targets `petgraph 0.8`
 only and has no plans to support older versions.
 
----
+## Documentation
 
-## Roadmap
-
-- [ ] `cache::GenerationCache<G>` with read-write lock, hit/miss semantics
-- [ ] `metrics` — diameter, radius, eccentricity, center, periphery (BFS, O(n·(n+e)))
-- [ ] `connect` — articulation points, bridges (DFS, O(n+e))
-- [ ] `snapshot` — serde-based disk persistence (`petgraph serde-1` feature)
-- [ ] Docs and examples
-
----
+- [Roadmap](docs/roadmap.md)
+- [Specifications](docs/specifications/README.md)
+- [Release guide](docs/release.md)
+- [API design](docs/api-design.md)
 
 ## License
 
-MIT OR Apache-2.0
+Licensed under either of [MIT](LICENSE-MIT) or [Apache-2.0](LICENSE-APACHE) at your option.

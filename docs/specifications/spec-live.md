@@ -6,7 +6,7 @@ read_when:
   - Understanding init/get/get_fresh/rebuild flows
   - Reasoning about concurrency guarantees in live module
   - Writing tests for the live module
-status: pre-implementation
+status: implemented
 last_updated: "2026-05-02"
 ---
 
@@ -14,7 +14,7 @@ last_updated: "2026-05-02"
 
 **Crate:** `petgraph-live`
 **Feature flag:** `snapshot` (live is always included when snapshot is enabled)
-**Status:** pre-implementation
+**Status:** implemented
 **Depends on:** `cache` module, `snapshot` module
 
 ---
@@ -59,6 +59,25 @@ structural and always active.
 Two concurrent callers both detecting a stale key will both call `build_fn`.
 Both results are identical (idempotent build). The last writer wins the
 cache-swap. Acceptable for v0.1 — coalescing deferred to v0.2.
+
+### Preventing redundant builds — caller responsibility
+
+If `build_fn` is expensive and concurrent calls to `get_fresh()` must not
+duplicate work, the caller serializes at a higher level:
+
+```rust
+// Caller-side rebuild guard — one mutex, not inside GraphState.
+let _guard = rebuild_mutex.lock().unwrap();
+state.get_fresh()
+```
+
+`get()` (hot path) never acquires this mutex — only the rebuild path does.
+This keeps `GenerationCache` and `GraphState` lock-free on reads while
+preventing redundant builds without any complexity inside the crate.
+
+In a project, `get_fresh()` is called from a single file-watch thread — the
+race window does not exist in practice. The pattern above is for callers
+where multiple threads may trigger a stale-key check simultaneously.
 
 ---
 
@@ -198,31 +217,31 @@ rebuild():
 
 ## Files
 
-| Path | Responsibility |
-|---|---|
-| `src/live/mod.rs` | Re-exports, module-level rustdoc |
-| `src/live/config.rs` | `GraphStateConfig` |
-| `src/live/state.rs` | `GraphState<G>`, `GraphStateBuilder<G>`, `GraphStateInner` |
-| `tests/live.rs` | Integration tests |
-| `examples/live_basic.rs` | End-to-end demo |
+| Path                     | Responsibility                                             |
+| ------------------------ | ---------------------------------------------------------- |
+| `src/live/mod.rs`        | Re-exports, module-level rustdoc                           |
+| `src/live/config.rs`     | `GraphStateConfig`                                         |
+| `src/live/state.rs`      | `GraphState<G>`, `GraphStateBuilder<G>`, `GraphStateInner` |
+| `tests/live.rs`          | Integration tests                                          |
+| `examples/live_basic.rs` | End-to-end demo                                            |
 
 ---
 
 ## Test matrix
 
-| Test | Verifies |
-|---|---|
-| `test_config_new` | Config construction |
-| `test_builder_missing_key_fn_errors` | init() without key_fn → Err |
-| `test_builder_missing_build_fn_errors` | init() without build_fn → Err |
-| `test_builder_key_some_errors` | snapshot.key = Some → init() Err |
-| `test_init_cold_start_no_snapshot` | Empty dir → build called, snapshot written |
-| `test_init_warm_start_from_snapshot` | Key matches → load, build NOT called |
-| `test_init_snapshot_key_mismatch_rebuilds` | Key mismatch → build called |
-| `test_get_returns_cached` | Two get() calls → same Arc::ptr_eq |
-| `test_current_key_and_generation` | Values correct after init |
-| `test_get_fresh_same_key_no_rebuild` | Same key → no rebuild |
-| `test_get_fresh_new_key_triggers_rebuild` | New key → rebuild, snapshot written |
-| `test_get_fresh_saves_snapshot` | Snapshot file exists after rebuild |
-| `test_rebuild_forces_new_graph` | rebuild() → new Arc, different value |
-| `test_concurrent_get` | 8 threads × 100 reads, no deadlock |
+| Test                                       | Verifies                                   |
+| ------------------------------------------ | ------------------------------------------ |
+| `test_config_new`                          | Config construction                        |
+| `test_builder_missing_key_fn_errors`       | init() without key_fn → Err                |
+| `test_builder_missing_build_fn_errors`     | init() without build_fn → Err              |
+| `test_builder_key_some_errors`             | snapshot.key = Some → init() Err           |
+| `test_init_cold_start_no_snapshot`         | Empty dir → build called, snapshot written |
+| `test_init_warm_start_from_snapshot`       | Key matches → load, build NOT called       |
+| `test_init_snapshot_key_mismatch_rebuilds` | Key mismatch → build called                |
+| `test_get_returns_cached`                  | Two get() calls → same Arc::ptr_eq         |
+| `test_current_key_and_generation`          | Values correct after init                  |
+| `test_get_fresh_same_key_no_rebuild`       | Same key → no rebuild                      |
+| `test_get_fresh_new_key_triggers_rebuild`  | New key → rebuild, snapshot written        |
+| `test_get_fresh_saves_snapshot`            | Snapshot file exists after rebuild         |
+| `test_rebuild_forces_new_graph`            | rebuild() → new Arc, different value       |
+| `test_concurrent_get`                      | 8 threads × 100 reads, no deadlock         |

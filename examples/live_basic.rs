@@ -5,8 +5,8 @@ use petgraph_live::{
     live::{GraphState, GraphStateConfig},
     snapshot::{Compression, SnapshotConfig, SnapshotFormat},
 };
-use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, Ordering};
 
 fn main() {
     let dir = tempfile::tempdir().unwrap();
@@ -38,7 +38,11 @@ fn main() {
         .unwrap();
 
     let g1 = state.get().unwrap();
-    println!("init: {} nodes, key={}", g1.node_count(), state.current_key());
+    println!(
+        "init: {} nodes, key={}",
+        g1.node_count(),
+        state.current_key()
+    );
 
     // Same key → cached
     let g2 = state.get_fresh().unwrap();
@@ -56,5 +60,9 @@ fn main() {
     // Force rebuild
     version.store(10, Ordering::SeqCst);
     let g4 = state.rebuild().unwrap();
-    println!("rebuild: {} nodes, key={}", g4.node_count(), state.current_key());
+    println!(
+        "rebuild: {} nodes, key={}",
+        g4.node_count(),
+        state.current_key()
+    );
 }

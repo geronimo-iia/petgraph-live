@@ -32,10 +32,10 @@ Distance-based graph characteristics. All unweighted functions use BFS
 
 ### Deviations from graphalgs
 
-| Function | graphalgs | petgraph-live |
-|---|---|---|
-| `girth` | `f32`, `INFINITY` if acyclic | `Option<u32>`, `None` if acyclic |
-| `weighted_eccentricity` | no closure, bound on `G::EdgeWeight` | takes `edge_cost: F` closure |
+| Function                | graphalgs                            | petgraph-live                    |
+| ----------------------- | ------------------------------------ | -------------------------------- |
+| `girth`                 | `f32`, `INFINITY` if acyclic         | `Option<u32>`, `None` if acyclic |
+| `weighted_eccentricity` | no closure, bound on `G::EdgeWeight` | takes `edge_cost: F` closure     |
 
 ### Public API
 
@@ -102,9 +102,9 @@ O(n^ω log n). No nalgebra — matrix operations over `Vec<Vec<u32>>`.
 
 ### Deviations from graphalgs
 
-| Function | graphalgs | petgraph-live |
-|---|---|---|
-| `prim` | `Vec<(usize, usize)>` | `Vec<(G::NodeId, G::NodeId)>` |
+| Function  | graphalgs                 | petgraph-live                        |
+| --------- | ------------------------- | ------------------------------------ |
+| `prim`    | `Vec<(usize, usize)>`     | `Vec<(G::NodeId, G::NodeId)>`        |
 | `boruvka` | `HashSet<(usize, usize)>` | `Vec<(G::NodeId, G::NodeId)>` sorted |
 
 Raw `usize` indices are unsafe across graph mutations; `HashSet` is

@@ -1,9 +1,9 @@
 use std::sync::{Arc, RwLock};
 
-use crate::cache::GenerationCache;
-use crate::snapshot::{SnapshotError, load};
-use crate::snapshot::io::save_any;
 use super::GraphStateConfig;
+use crate::cache::GenerationCache;
+use crate::snapshot::io::save_any;
+use crate::snapshot::{SnapshotError, load};
 
 /// Managed, versioned graph with snapshot-backed persistence.
 ///
@@ -13,16 +13,16 @@ use super::GraphStateConfig;
 /// Construct one with [`GraphState::builder`].  See [`crate::live`] for a
 /// complete end-to-end example.
 pub struct GraphState<G> {
-    cache:    GenerationCache<G>,
-    config:   GraphStateConfig,
-    key_fn:   Arc<dyn Fn() -> Result<String, SnapshotError> + Send + Sync>,
+    cache: GenerationCache<G>,
+    config: GraphStateConfig,
+    key_fn: Arc<dyn Fn() -> Result<String, SnapshotError> + Send + Sync>,
     build_fn: Arc<dyn Fn() -> Result<G, SnapshotError> + Send + Sync>,
-    inner:    RwLock<GraphStateInner>,
+    inner: RwLock<GraphStateInner>,
 }
 
 struct GraphStateInner {
     current_key: String,
-    generation:  u64,
+    generation: u64,
 }
 
 /// Builder for [`GraphState<G>`].
@@ -31,16 +31,21 @@ struct GraphStateInner {
 /// [`build_fn`](Self::build_fn), and optionally [`current_key`](Self::current_key)
 /// before calling [`init`](Self::init).
 pub struct GraphStateBuilder<G> {
-    config:      GraphStateConfig,
-    key_fn:      Option<Box<dyn Fn() -> Result<String, SnapshotError> + Send + Sync>>,
-    build_fn:    Option<Box<dyn Fn() -> Result<G, SnapshotError> + Send + Sync>>,
+    config: GraphStateConfig,
+    key_fn: Option<Box<dyn Fn() -> Result<String, SnapshotError> + Send + Sync>>,
+    build_fn: Option<Box<dyn Fn() -> Result<G, SnapshotError> + Send + Sync>>,
     current_key: Option<String>,
 }
 
 impl<G> GraphState<G> {
     /// Create a [`GraphStateBuilder`] seeded with `config`.
     pub fn builder(config: GraphStateConfig) -> GraphStateBuilder<G> {
-        GraphStateBuilder { config, key_fn: None, build_fn: None, current_key: None }
+        GraphStateBuilder {
+            config,
+            key_fn: None,
+            build_fn: None,
+            current_key: None,
+        }
     }
 }
 
@@ -75,7 +80,8 @@ impl<G: Send + Sync + 'static> GraphState<G> {
     /// ```
     pub fn get(&self) -> Result<Arc<G>, SnapshotError> {
         let generation = self.inner.read().unwrap().generation;
-        self.cache.get_or_build(generation, || Err(SnapshotError::NoSnapshotFound))
+        self.cache
+            .get_or_build(generation, || Err(SnapshotError::NoSnapshotFound))
     }
 
     /// The key that was active when the graph was last built or loaded.
@@ -128,7 +134,9 @@ impl<G: serde::Serialize + serde::de::DeserializeOwned + Send + Sync + 'static> 
             if new_key == inner.current_key {
                 let cur_gen = inner.generation;
                 drop(inner);
-                return self.cache.get_or_build(cur_gen, || Err(SnapshotError::NoSnapshotFound));
+                return self
+                    .cache
+                    .get_or_build(cur_gen, || Err(SnapshotError::NoSnapshotFound));
             }
         }
         // Key changed — build outside any lock
@@ -146,7 +154,8 @@ impl<G: serde::Serialize + serde::de::DeserializeOwned + Send + Sync + 'static> 
         };
         // Store in cache
         self.cache.invalidate();
-        self.cache.get_or_build(new_gen, || Ok::<G, SnapshotError>(graph))
+        self.cache
+            .get_or_build(new_gen, || Ok::<G, SnapshotError>(graph))
     }
 
     /// Force a full rebuild regardless of whether the key changed.
@@ -194,7 +203,8 @@ impl<G: serde::Serialize + serde::de::DeserializeOwned + Send + Sync + 'static> 
             inner.generation
         };
         self.cache.invalidate();
-        self.cache.get_or_build(new_gen, || Ok::<G, SnapshotError>(graph))
+        self.cache
+            .get_or_build(new_gen, || Ok::<G, SnapshotError>(graph))
     }
 }
 
@@ -239,8 +249,7 @@ impl<G> GraphStateBuilder<G> {
 
 impl<G> GraphStateBuilder<G>
 where
-    G: serde::Serialize + serde::de::DeserializeOwned
-        + Send + Sync + 'static,
+    G: serde::Serialize + serde::de::DeserializeOwned + Send + Sync + 'static,
 {
     /// Build the [`GraphState`], performing a cold-start load or build.
     ///
@@ -258,10 +267,12 @@ where
     /// snapshot I/O fails.
     pub fn init(self) -> Result<GraphState<G>, SnapshotError> {
         let key_fn: Arc<dyn Fn() -> Result<String, SnapshotError> + Send + Sync> = Arc::from(
-            self.key_fn.ok_or_else(|| SnapshotError::InvalidKey("key_fn not set".into()))?,
+            self.key_fn
+                .ok_or_else(|| SnapshotError::InvalidKey("key_fn not set".into()))?,
         );
         let build_fn: Arc<dyn Fn() -> Result<G, SnapshotError> + Send + Sync> = Arc::from(
-            self.build_fn.ok_or_else(|| SnapshotError::InvalidKey("build_fn not set".into()))?,
+            self.build_fn
+                .ok_or_else(|| SnapshotError::InvalidKey("build_fn not set".into()))?,
         );
 
         if self.config.snapshot.key.is_some() {
@@ -298,7 +309,10 @@ where
             config: self.config,
             key_fn,
             build_fn,
-            inner: RwLock::new(GraphStateInner { current_key, generation: 1 }),
+            inner: RwLock::new(GraphStateInner {
+                current_key,
+                generation: 1,
+            }),
         })
     }
 }
