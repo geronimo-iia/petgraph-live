@@ -544,6 +544,153 @@ fn test_lz4_inspect() {
     assert_eq!(meta.key, "lz4meta");
 }
 
+// ── TDD: lazy metadata tests (partial-read / MetaOnly) ──────────────────────
+
+#[cfg(feature = "snapshot")]
+#[test]
+fn test_inspect_partial_read_bincode() {
+    // Save a valid graph, then craft a file with valid meta header + garbage
+    // graph bytes. inspect() must succeed; load() must fail with ParseError.
+    use petgraph::Graph;
+    use petgraph_live::snapshot::{
+        Compression, SnapshotConfig, SnapshotError, SnapshotFormat, inspect, load, save,
+    };
+    let dir = tempfile::tempdir().unwrap();
+    let mut cfg = SnapshotConfig {
+        dir: dir.path().to_path_buf(),
+        name: "mygraph".into(),
+        key: Some("goodkey".into()),
+        format: SnapshotFormat::Bincode,
+        compression: Compression::None,
+        keep: 10,
+    };
+    let mut graph: Graph<String, ()> = Graph::new();
+    graph.add_node("node0".into());
+    graph.add_node("node1".into());
+    save(&cfg, &graph).unwrap();
+
+    // Read the valid file to extract the meta header bytes
+    let good_path = dir.path().join("mygraph-goodkey.snap");
+    let raw = std::fs::read(&good_path).unwrap();
+    let meta_len = u64::from_le_bytes(raw[..8].try_into().unwrap()) as usize;
+    let header = &raw[..8 + meta_len];
+
+    // Build a file: valid header + garbage bytes
+    let mut bad_bytes = header.to_vec();
+    bad_bytes.extend_from_slice(b"THIS IS NOT VALID BINCODE GRAPH DATA !!!!");
+    let bad_path = dir.path().join("mygraph-badkey.snap");
+    std::fs::write(&bad_path, &bad_bytes).unwrap();
+
+    // inspect() on bad file: must return Ok(Some(meta)) — stops at header
+    cfg.key = Some("badkey".into());
+    let meta = inspect(&cfg).unwrap().unwrap();
+    assert_eq!(meta.node_count, 2);
+    assert_eq!(meta.key, "goodkey"); // meta.key reflects what was saved in the header
+
+    // load() on same bad file: must fail — graph bytes are garbage
+    let result: Result<Option<Graph<String, ()>>, _> = load(&cfg);
+    assert!(
+        matches!(result, Err(SnapshotError::ParseError(_))),
+        "expected ParseError, got {:?}",
+        result
+    );
+}
+
+#[cfg(feature = "snapshot")]
+#[test]
+fn test_inspect_json_meta_only() {
+    // Save with JSON format. inspect() must return correct node_count and key.
+    // Proves MetaOnly deserialization works without calling G::deserialize.
+    use petgraph::Graph;
+    use petgraph_live::snapshot::{Compression, SnapshotConfig, SnapshotFormat, inspect, save};
+    let dir = tempfile::tempdir().unwrap();
+    let cfg = SnapshotConfig {
+        dir: dir.path().to_path_buf(),
+        name: "jgraph".into(),
+        key: Some("jsonkey".into()),
+        format: SnapshotFormat::Json,
+        compression: Compression::None,
+        keep: 10,
+    };
+    let mut graph: Graph<String, ()> = Graph::new();
+    for i in 0..5 {
+        graph.add_node(format!("n{}", i));
+    }
+    save(&cfg, &graph).unwrap();
+    let meta = inspect(&cfg).unwrap().unwrap();
+    assert_eq!(meta.node_count, 5);
+    assert_eq!(meta.key, "jsonkey");
+}
+
+#[cfg(feature = "snapshot")]
+#[test]
+fn test_list_partial_read_bincode() {
+    // Save 3 bincode snapshots, list() must return all 3 with correct node counts.
+    use petgraph::Graph;
+    use petgraph_live::snapshot::{Compression, SnapshotConfig, SnapshotFormat, list, save};
+    use std::{thread, time::Duration};
+    let dir = tempfile::tempdir().unwrap();
+    let cfg_base = SnapshotConfig {
+        dir: dir.path().to_path_buf(),
+        name: "lg".into(),
+        key: None,
+        format: SnapshotFormat::Bincode,
+        compression: Compression::None,
+        keep: 10,
+    };
+    for i in 0u32..3 {
+        let mut cfg = cfg_base.clone();
+        cfg.key = Some(format!("lkey{}", i));
+        let mut g: Graph<String, ()> = Graph::new();
+        for j in 0..i {
+            g.add_node(format!("n{}", j));
+        }
+        save(&cfg, &g).unwrap();
+        thread::sleep(Duration::from_millis(5));
+    }
+    let entries = list(&cfg_base).unwrap();
+    assert_eq!(entries.len(), 3);
+    // node counts: 0, 1, 2
+    assert_eq!(entries[0].1.node_count, 0);
+    assert_eq!(entries[1].1.node_count, 1);
+    assert_eq!(entries[2].1.node_count, 2);
+}
+
+#[cfg(feature = "snapshot")]
+#[test]
+fn test_list_json_meta_only() {
+    // Same as test_list_partial_read_bincode but with JSON format.
+    use petgraph::Graph;
+    use petgraph_live::snapshot::{Compression, SnapshotConfig, SnapshotFormat, list, save};
+    use std::{thread, time::Duration};
+    let dir = tempfile::tempdir().unwrap();
+    let cfg_base = SnapshotConfig {
+        dir: dir.path().to_path_buf(),
+        name: "jlg".into(),
+        key: None,
+        format: SnapshotFormat::Json,
+        compression: Compression::None,
+        keep: 10,
+    };
+    for i in 0u32..3 {
+        let mut cfg = cfg_base.clone();
+        cfg.key = Some(format!("jlkey{}", i));
+        let mut g: Graph<String, ()> = Graph::new();
+        for j in 0..i {
+            g.add_node(format!("n{}", j));
+        }
+        save(&cfg, &g).unwrap();
+        thread::sleep(Duration::from_millis(5));
+    }
+    let entries = list(&cfg_base).unwrap();
+    assert_eq!(entries.len(), 3);
+    assert_eq!(entries[0].1.node_count, 0);
+    assert_eq!(entries[1].1.node_count, 1);
+    assert_eq!(entries[2].1.node_count, 2);
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+
 #[cfg(all(feature = "snapshot", feature = "snapshot-zstd"))]
 #[test]
 fn test_zstd_roundtrip() {
