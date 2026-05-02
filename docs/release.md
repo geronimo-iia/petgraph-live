@@ -74,21 +74,24 @@ cargo test --features snapshot-zstd,snapshot-lz4
 ```bash
 # 1. Bump version in Cargo.toml, update CHANGELOG date
 
-# 2. Commit on release branch
+# 2. Commit on release branch, push, open PR
 git commit -am "chore: release vx.y.z"
+git push origin release/vx.y.z
+gh pr create --title "chore: release vx.y.z" --base main
 
-# 3. Merge to main, then tag
+# 3. Wait for PR CI to pass, then merge to main
 git checkout main
 git merge --no-ff release/vx.y.z
+
+# 4. Tag the merge commit and push — GitHub Actions handles publish
 git tag -a vx.y.z -m "Release vx.y.z"
 git push origin main
 git push origin vx.y.z
-
 # GitHub Actions handles publish on tag push
 ```
 
-Tags containing `-rc` (e.g. `v0.2.0-rc1`) follow the same steps but skip
-`cargo publish` — release candidate for testing only.
+Tags containing `-rc` (e.g. `v0.3.0-rc1`) follow the same steps but the
+publish workflow will not trigger (RC tags are excluded).
 
 ## Hotfix
 
