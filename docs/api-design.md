@@ -110,15 +110,17 @@ mst::kruskal(&graph)                  // impl Iterator<Item = Element<N,E>> — 
 
 ## Module: `snapshot` (feature-gated)
 
-Feature flag: `snapshot`. Optional compression: `snapshot-zstd`.
+Feature flag: `snapshot`. Optional compression: `snapshot-zstd`, `snapshot-lz4`.
 
 ### File naming
 
 ```
 {name}-{sanitized_key}.snap
 {name}-{sanitized_key}.snap.zst
+{name}-{sanitized_key}.snap.lz4
 {name}-{sanitized_key}.json
 {name}-{sanitized_key}.json.zst
+{name}-{sanitized_key}.json.lz4
 ```
 
 Key sanitization: replace chars outside `[a-zA-Z0-9_.-]` with `_`. Same key → same filename → idempotent overwrite.
@@ -131,6 +133,7 @@ pub enum SnapshotFormat { Bincode, Json }
 pub enum Compression {
     None,
     Zstd { level: i32 },  // requires feature "snapshot-zstd"
+    Lz4,                   // requires feature "snapshot-lz4"
 }
 
 pub struct SnapshotConfig {
@@ -262,5 +265,6 @@ Two concurrent `get_fresh()` callers detecting a stale key both call `build_fn`
 | default         | `petgraph 0.8` only                                  |
 | `snapshot`      | `serde`, `serde_json`, `bincode`, `petgraph/serde-1` |
 | `snapshot-zstd` | `snapshot` + `zstd`                                  |
+| `snapshot-lz4`  | `snapshot` + `lz4_flex`                              |
 
 No `nalgebra`, `rand`, `rayon`, or async runtime.

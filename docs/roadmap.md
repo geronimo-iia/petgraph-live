@@ -41,7 +41,7 @@ All four modules. No breaking changes expected after this milestone.
 
 | Feature                                                        | Notes                                                        |
 | -------------------------------------------------------------- | ------------------------------------------------------------ |
-| `snapshot-lz4` sub-feature                                     | Faster compression than zstd for large graphs                |
+| `snapshot-lz4` sub-feature — [spec](specifications/spec-snapshot-lz4.md) / [plan](brainstorming/plan-snapshot-lz4.md) | Faster decompression than zstd; pure Rust (`lz4_flex`) | **done** |
 | Schema versioning helper                                       | `SnapshotMeta::petgraph_live_version` mismatch → caller hook |
 | `list` + `inspect` without loading graph body (JSON streaming) | Skip `"graph"` field entirely using streaming deserializer   |
 

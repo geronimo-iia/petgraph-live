@@ -11,15 +11,17 @@ last_updated: "2026-05-02"
 
 # Specification: `snapshot` module
 
-**Feature flags:** `snapshot` / `snapshot-zstd`
+**Feature flags:** `snapshot` / `snapshot-zstd` / `snapshot-lz4`
 
 ## File naming
 
 ```
 {name}-{sanitized_key}.snap
 {name}-{sanitized_key}.snap.zst
+{name}-{sanitized_key}.snap.lz4
 {name}-{sanitized_key}.json
 {name}-{sanitized_key}.json.zst
+{name}-{sanitized_key}.json.lz4
 ```
 
 `sanitize_key`: replace chars outside `[a-zA-Z0-9_.-]` with `_`. Error if result trims to empty.
