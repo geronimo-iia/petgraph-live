@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.1.0] — 2026-05-02
+## [0.2.0] — 2026-05-02
 
 ### Added
 - `cache::GenerationCache<G>` — thread-safe generation-keyed graph cache with
@@ -34,4 +34,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `SECURITY.md`, `docs/release.md`, `docs/specifications/` index,
   `docs/roadmap.md`, `docs/api-design.md`
 
-[0.1.0]: https://github.com/geronimo-iia/petgraph-live/releases/tag/v0.1.0
+[0.2.0]: https://github.com/geronimo-iia/petgraph-live/releases/tag/v0.2.0

@@ -1,9 +1,9 @@
 # petgraph-live — Roadmap
 
-**Current status:** v0.1.0 implemented. All four modules done; release pending.
+**Current status:** v0.2.0 implemented. All four modules done; release pending.
 
 
-## v0.1.0 — Core
+## v0.2.0 — Core
 
 All four modules. No breaking changes expected after this milestone.
 
@@ -25,7 +25,7 @@ All four modules. No breaking changes expected after this milestone.
 | `snapshot`                                   | [spec-snapshot](specifications/spec-snapshot.md)     | implemented |
 | `live::GraphState<G>`                        | [spec-live](specifications/spec-live.md)             | implemented |
 
-### Definition of done for v0.1.0
+### Definition of done for v0.2.0
 
 - [x] `cargo test` — zero failures (no features)
 - [x] `cargo test --features snapshot,snapshot-zstd` — zero failures
@@ -37,7 +37,7 @@ All four modules. No breaking changes expected after this milestone.
 - [x] README updated to reflect actual API
 
 
-## v0.2.0 — Snapshot improvements
+## v0.3.0 — Snapshot improvements
 
 | Feature                                                        | Notes                                                        |
 | -------------------------------------------------------------- | ------------------------------------------------------------ |
@@ -46,9 +46,9 @@ All four modules. No breaking changes expected after this milestone.
 | `list` + `inspect` without loading graph body (JSON streaming) | Skip `"graph"` field entirely using streaming deserializer   |
 
 
-## v0.3.0 — Extended algorithms
+## v0.4.0 — Extended algorithms
 
-Algorithms deferred from v0.1 (require more complex implementation or design).
+Algorithms deferred from v0.2 (require more complex implementation or design).
 
 | Feature                                              | Notes                                                    |
 | ---------------------------------------------------- | -------------------------------------------------------- |

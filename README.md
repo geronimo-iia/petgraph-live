@@ -1,6 +1,6 @@
 # petgraph-live
 
-> **Status: v0.1.0 in progress.** `cache`, `algorithms`, and `snapshot` implemented. `live` in progress. API not yet stable.
+> **Status: v0.2.0.** All modules implemented. API not yet stable.
 
 Graph cache, snapshot, and algorithms for [`petgraph`](https://docs.rs/petgraph) 0.8.
 
@@ -82,13 +82,13 @@ let graph = state.get_fresh()?;     // checks key, rebuilds if stale
 
 ```toml
 [dependencies]
-petgraph-live = "0.1"
+petgraph-live = "0.2"
 
 # With snapshot:
-petgraph-live = { version = "0.1", features = ["snapshot"] }
+petgraph-live = { version = "0.2", features = ["snapshot"] }
 
 # With compression:
-petgraph-live = { version = "0.1", features = ["snapshot-zstd"] }
+petgraph-live = { version = "0.2", features = ["snapshot-zstd"] }
 ```
 
 ## Motivation
