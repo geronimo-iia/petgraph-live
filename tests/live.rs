@@ -338,3 +338,40 @@ fn test_get_fresh_saves_snapshot() {
         .collect();
     assert_eq!(after.len(), 2, "get_fresh must save new snapshot for new key");
 }
+
+#[cfg(feature = "snapshot")]
+#[test]
+fn test_rebuild_forces_new_graph() {
+    use petgraph::Graph;
+    use petgraph_live::{
+        live::{GraphState, GraphStateConfig},
+        snapshot::{Compression, SnapshotConfig, SnapshotFormat},
+    };
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicU32, Ordering};
+    let dir = tempfile::tempdir().unwrap();
+    let counter = Arc::new(AtomicU32::new(0));
+    let c1 = Arc::clone(&counter);
+    let c2 = Arc::clone(&counter);
+    let snap = SnapshotConfig {
+        dir: dir.path().to_path_buf(), name: "g".into(), key: None,
+        format: SnapshotFormat::Bincode, compression: Compression::None, keep: 3,
+    };
+    let state: GraphState<Graph<u32, ()>> = GraphState::builder(GraphStateConfig::new(snap))
+        .key_fn(|| Ok("v1".into()))
+        .build_fn(move || {
+            let n = c1.fetch_add(1, Ordering::SeqCst);
+            let mut g = Graph::new();
+            for i in 0..n { g.add_node(i); }
+            Ok(g)
+        })
+        .init()
+        .unwrap();
+    assert_eq!(counter.load(Ordering::SeqCst), 1, "init called build_fn once");
+    let g1 = state.get().unwrap();
+    state.rebuild().unwrap();
+    let g2 = state.get().unwrap();
+    assert_eq!(counter.load(Ordering::SeqCst), 2, "rebuild must call build_fn again");
+    assert!(!Arc::ptr_eq(&g1, &g2), "get() after rebuild must return new Arc");
+    drop(c2); // silence unused warning
+}

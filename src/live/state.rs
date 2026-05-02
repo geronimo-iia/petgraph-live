@@ -74,6 +74,22 @@ impl<G: serde::Serialize + serde::de::DeserializeOwned + Send + Sync + 'static> 
         self.cache.invalidate();
         self.cache.get_or_build(new_gen, || Ok::<G, SnapshotError>(graph))
     }
+
+    pub fn rebuild(&self) -> Result<Arc<G>, SnapshotError> {
+        let current_key = (self.key_fn)()?;
+        let graph = (self.build_fn)()?;
+        let mut save_cfg = self.config.snapshot.clone();
+        save_cfg.key = Some(current_key.clone());
+        save_any(&save_cfg, &graph)?;
+        let new_gen = {
+            let mut inner = self.inner.write().unwrap();
+            inner.generation += 1;
+            inner.current_key = current_key;
+            inner.generation
+        };
+        self.cache.invalidate();
+        self.cache.get_or_build(new_gen, || Ok::<G, SnapshotError>(graph))
+    }
 }
 
 impl<G> GraphStateBuilder<G> {
