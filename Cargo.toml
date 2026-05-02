@@ -45,3 +45,7 @@ required-features = ["snapshot"]
 [[example]]
 name = "live_basic"
 required-features = ["snapshot"]
+
+[[example]]
+name = "snapshot_compression"
+required-features = ["snapshot"]
