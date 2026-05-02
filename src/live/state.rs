@@ -7,8 +7,11 @@ use super::GraphStateConfig;
 
 pub struct GraphState<G> {
     cache:    GenerationCache<G>,
+    #[allow(dead_code)] // used by get_fresh/rebuild in later tasks
     config:   GraphStateConfig,
+    #[allow(dead_code)] // used by get_fresh/rebuild in later tasks
     key_fn:   Arc<dyn Fn() -> Result<String, SnapshotError> + Send + Sync>,
+    #[allow(dead_code)] // used by get_fresh/rebuild in later tasks
     build_fn: Arc<dyn Fn() -> Result<G, SnapshotError> + Send + Sync>,
     inner:    RwLock<GraphStateInner>,
 }
