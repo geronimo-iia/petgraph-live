@@ -54,7 +54,7 @@ cargo test --features snapshot-zstd,snapshot-lz4
 - [ ] All tests pass (all three feature combinations above)
 - [ ] Formatted: `cargo fmt -- --check`
 - [ ] No lint issues: `cargo clippy --all-targets --all-features -- -D warnings`
-- [ ] Examples compile: `cargo build --examples --all-features`
+- [ ] Examples compile and run without panic: `cargo run --example cache_basic && cargo run --example connect && cargo run --example metrics && cargo run --example mst && cargo run --example shortest_path && cargo run --example snapshot_basic --features snapshot && cargo run --example live_basic --features snapshot`
 - [ ] Doc tests pass: `cargo test --doc --all-features`
 
 ### Documentation
