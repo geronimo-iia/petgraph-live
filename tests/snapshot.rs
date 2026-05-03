@@ -743,8 +743,7 @@ fn save_creates_missing_directory() {
     use petgraph::graph::DiGraph;
     use petgraph_live::snapshot::{Compression, SnapshotConfig, SnapshotFormat, save};
 
-    let dir = std::env::temp_dir()
-        .join(format!("petgraph_live_autodir_{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("petgraph_live_autodir_{}", std::process::id()));
     assert!(!dir.exists(), "dir should not exist before save");
 
     let cfg = SnapshotConfig {
