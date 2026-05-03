@@ -725,3 +725,14 @@ fn test_zstd_roundtrip() {
     let loaded: Graph<u32, ()> = load(&cfg).unwrap().unwrap();
     assert_eq!(loaded.node_count(), 100);
 }
+
+#[cfg(feature = "snapshot")]
+#[test]
+fn list_snapshot_files_missing_dir_returns_empty() {
+    use petgraph_live::snapshot::rotation::list_snapshot_files;
+    use std::path::Path;
+
+    let result = list_snapshot_files(Path::new("/tmp/petgraph_live_nonexistent_xyz"), "mygraph");
+    assert!(result.is_ok(), "expected Ok, got {:?}", result);
+    assert!(result.unwrap().is_empty());
+}

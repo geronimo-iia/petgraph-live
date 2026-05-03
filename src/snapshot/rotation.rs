@@ -14,7 +14,12 @@ pub fn list_snapshot_files(dir: &Path, name: &str) -> Result<Vec<PathBuf>, Snaps
         ".json.lz4",
     ];
 
-    let mut entries: Vec<(std::time::SystemTime, PathBuf)> = std::fs::read_dir(dir)?
+    let read_dir_iter = match std::fs::read_dir(dir) {
+        Ok(r) => r,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(vec![]),
+        Err(e) => return Err(SnapshotError::Io(e)),
+    };
+    let mut entries: Vec<(std::time::SystemTime, PathBuf)> = read_dir_iter
         .filter_map(|e| e.ok())
         .filter_map(|e| {
             let path = e.path();
