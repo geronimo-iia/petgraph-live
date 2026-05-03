@@ -81,6 +81,7 @@ where
     let final_path = snapshot_path(cfg, &sanitized);
     let tmp_path = PathBuf::from(format!("{}.tmp", final_path.to_string_lossy()));
 
+    std::fs::create_dir_all(&cfg.dir)?;
     std::fs::write(&tmp_path, &bytes)?;
     std::fs::rename(&tmp_path, &final_path)?;
 
@@ -105,6 +106,7 @@ pub(crate) fn save_any<G: Serialize>(cfg: &SnapshotConfig, graph: &G) -> Result<
     let final_path = snapshot_path(cfg, &sanitized);
     let tmp_path = PathBuf::from(format!("{}.tmp", final_path.to_string_lossy()));
 
+    std::fs::create_dir_all(&cfg.dir)?;
     std::fs::write(&tmp_path, &bytes)?;
     std::fs::rename(&tmp_path, &final_path)?;
 

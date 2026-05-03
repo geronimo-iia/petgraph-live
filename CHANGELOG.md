@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] — 2026-05-03
+
+### Fixed
+
+- `snapshot::io::save()` now calls `std::fs::create_dir_all` before writing, so it no longer returns `Err(NotFound)` when `SnapshotConfig.dir` does not exist. Callers no longer need to pre-create the directory. (fixes #7)
+- `snapshot::rotation::list_snapshot_files()` returns `Ok(vec![])` instead of `Err(NotFound)` when the snapshot directory is absent. (fixes #7)
+
 ## [0.3.0] — 2026-05-02
 
 ### Added
