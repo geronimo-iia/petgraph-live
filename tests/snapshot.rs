@@ -736,3 +736,31 @@ fn list_snapshot_files_missing_dir_returns_empty() {
     assert!(result.is_ok(), "expected Ok, got {:?}", result);
     assert!(result.unwrap().is_empty());
 }
+
+#[cfg(feature = "snapshot")]
+#[test]
+fn save_creates_missing_directory() {
+    use petgraph::graph::DiGraph;
+    use petgraph_live::snapshot::{Compression, SnapshotConfig, SnapshotFormat, save};
+
+    let dir = std::env::temp_dir()
+        .join(format!("petgraph_live_autodir_{}", std::process::id()));
+    assert!(!dir.exists(), "dir should not exist before save");
+
+    let cfg = SnapshotConfig {
+        dir: dir.clone(),
+        name: "g".into(),
+        key: Some("testkey".into()),
+        format: SnapshotFormat::Bincode,
+        compression: Compression::None,
+        keep: 3,
+    };
+
+    let graph: DiGraph<(), ()> = DiGraph::new();
+    let result = save(&cfg, &graph);
+
+    assert!(result.is_ok(), "save() failed: {:?}", result);
+    assert!(dir.exists(), "save() did not create the directory");
+
+    let _ = std::fs::remove_dir_all(&dir);
+}
