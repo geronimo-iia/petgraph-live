@@ -11,6 +11,7 @@ petgraph_live
 ├── connect        Articulation points, bridges
 ├── shortest_path  Floyd-Warshall, Seidel, BFS distances, petgraph re-exports
 ├── mst            Prim, Borůvka (Kruskal re-exported from petgraph)
+├── hebbian        Dynamic edge-weight learning (SOKM, STDP, anti-Hebbian, Oja, BCM)
 ├── snapshot       Serde-based disk persistence (feature "snapshot")
 └── live           GraphState<G> — composes cache + snapshot (feature "snapshot")
 ```
@@ -106,6 +107,60 @@ use petgraph_live::mst;
 mst::prim(&graph, |e| *e.weight())    // Vec<(G::NodeId, G::NodeId)>
 mst::boruvka(&graph, |e| *e.weight()) // Vec<(G::NodeId, G::NodeId)>
 mst::kruskal(&graph)                  // impl Iterator<Item = Element<N,E>> — petgraph re-export
+```
+
+## Module: `hebbian`
+
+Dynamic edge-weight learning. All functions operate on `StableGraph<N, f64, Ty>`
+where `Ty: EdgeType` (directed or undirected). No extra dependencies.
+
+### SOKM (Self-Organizing Knowledge Map)
+
+```rust
+use petgraph_live::hebbian::{sokm_tick, decay, strengthen, prune, SokmConfig};
+
+// Full tick: decay → strengthen → prune
+let report = sokm_tick(&mut graph, &[(node_a, 1.0), (node_b, 0.8)], &SokmConfig::default());
+
+// Individual phases
+let n = decay(&mut graph, 0.95);
+let n = strengthen(&mut graph, &activated, &config);
+let n = prune(&mut graph, 0.001);
+```
+
+### STDP (Spike-Timing Dependent Plasticity)
+
+```rust
+use petgraph_live::hebbian::{stdp_update, StdpConfig};
+
+// Timed activations: (node, score, tick_fired)
+let activations = vec![(a, 1.0, 1), (b, 0.9, 3)];
+stdp_update(&mut graph, &activations, &StdpConfig::default());
+```
+
+### Anti-Hebbian (lateral inhibition)
+
+```rust
+use petgraph_live::hebbian::{anti_hebbian_update, AntiHebbianConfig};
+
+anti_hebbian_update(&mut graph, &activated, &AntiHebbianConfig::default());
+```
+
+### Oja (normalized Hebbian)
+
+```rust
+use petgraph_live::hebbian::{oja_update, OjaConfig};
+
+oja_update(&mut graph, &pre_activations, &post_activations, &OjaConfig::default());
+```
+
+### BCM (homeostatic plasticity)
+
+```rust
+use petgraph_live::hebbian::{bcm_update, BcmConfig, BcmState};
+
+let mut state = BcmState::new(node_count, 0.5);
+bcm_update(&mut graph, &activated, &mut state, &BcmConfig::default());
 ```
 
 ## Module: `snapshot` (feature-gated)
@@ -255,6 +310,7 @@ Two concurrent `get_fresh()` callers detecting a stale key both call `build_fn`
 | ------------------ | ----------------------------------------------- |
 | `cache`            | caller-supplied `E` from the `build` closure    |
 | `metrics`          | no `Result` — `None` for degenerate/empty cases |
+| `hebbian`          | no `Result` — returns counts/reports            |
 | `shortest_path`    | `NegativeCycle` (petgraph re-export)            |
 | `snapshot`, `live` | `SnapshotError`                                 |
 
