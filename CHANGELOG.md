@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `hebbian` module — SOKM (Self-Organizing Knowledge Map) algorithm: `decay`, `strengthen`, `prune`, `sokm_tick`; works on both directed and undirected `StableGraph<N, f64, Ty>`; config types `SokmConfig`, `StrengthFormula`, `HebbianReport`; example `hebbian_sokm`; criterion benchmark
+
 ## [0.3.1] — 2026-05-03
 
 ### Fixed

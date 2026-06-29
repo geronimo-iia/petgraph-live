@@ -98,6 +98,54 @@ pub use petgraph::algo::{
 `seidel`: unweighted APSP for undirected graphs (Seidel/APD algorithm),
 O(n^ω log n). No nalgebra — matrix operations over `Vec<Vec<u32>>`.
 
+## Module: `hebbian`
+
+Dynamic graph learning — Hebbian algorithms that modify edge weights based on
+node co-activation patterns. Pure computation, zero additional dependencies.
+
+Operates on `StableGraph<N, f64, Ty>` where `Ty: EdgeType` (both directed and
+undirected). Requires `StableGraph` because `prune` removes edges during
+iteration.
+
+### Design principles
+
+- Free functions (same style as `metrics`, `connect`)
+- Config as plain `#[derive(Debug, Clone, Copy)]` structs with `Default`
+- Operations return counts/diagnostics (`HebbianReport`), not `Result`
+- For undirected graphs, `strengthen` processes each unordered pair once
+
+### Public API
+
+```rust
+/// Configuration for SOKM dynamics.
+pub struct SokmConfig {
+    pub decay_factor: f64,    // default: 0.95
+    pub delta: f64,           // default: 0.02
+    pub min_weight: f64,      // default: 0.001
+    pub formula: StrengthFormula,
+}
+
+pub enum StrengthFormula { Product, Min, Average }
+
+pub struct HebbianReport {
+    pub decayed: usize,
+    pub strengthened: usize,
+    pub pruned: usize,
+}
+
+pub fn decay<N, Ty: EdgeType>(graph: &mut StableGraph<N, f64, Ty>, factor: f64) -> usize
+pub fn strengthen<N, Ty: EdgeType>(graph: &mut StableGraph<N, f64, Ty>, activated: &[(NodeIndex, f64)], config: &SokmConfig) -> usize
+pub fn prune<N, Ty: EdgeType>(graph: &mut StableGraph<N, f64, Ty>, threshold: f64) -> usize
+pub fn sokm_tick<N, Ty: EdgeType>(graph: &mut StableGraph<N, f64, Ty>, activated: &[(NodeIndex, f64)], config: &SokmConfig) -> HebbianReport
+```
+
+### SOKM algorithm
+
+Each tick executes three phases in order:
+1. **Decay** — multiply all edge weights by `decay_factor`
+2. **Strengthen** — for each co-activated pair, increment edge weight by formula
+3. **Prune** — remove edges with weight below `min_weight`
+
 ## Module: `mst`
 
 ### Deviations from graphalgs
