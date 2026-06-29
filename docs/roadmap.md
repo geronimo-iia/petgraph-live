@@ -8,7 +8,7 @@ Extended algorithms
 
 | Feature                                              | Notes                                                    |
 | ---------------------------------------------------- | -------------------------------------------------------- |
-| `hebbian` — Oja, BCM variants                        | Phase 3 of Hebbian module (SOKM, STDP, Anti-Hebbian done) |
+| `hebbian` — additional variants                      | Future extensions beyond SOKM/STDP/Anti-Hebbian/Oja/BCM |
 | `elementary_circuits` — Tarjan's circuit enumeration | Needs careful cycle detection, expensive on dense graphs |
 | `tournament` module                                  | Tournament-specific algorithms from graphalgs            |
 | `coloring::dsatur`                                   | DSATUR greedy graph colouring                            |

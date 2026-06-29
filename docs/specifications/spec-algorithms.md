@@ -179,6 +179,35 @@ pub struct AntiHebbianConfig {
 pub fn anti_hebbian_update<N, Ty: EdgeType>(graph: &mut StableGraph<N, f64, Ty>, activated: &[(NodeIndex, f64)], config: &AntiHebbianConfig) -> usize
 ```
 
+### Oja's rule
+
+Normalized Hebbian. Weights self-converge without manual capping.
+Δw = η × y × (x − w × y)
+
+```rust
+pub struct OjaConfig {
+    pub learning_rate: f64,  // default: 0.01
+}
+
+pub fn oja_update<N, Ty: EdgeType>(graph: &mut StableGraph<N, f64, Ty>, pre_activations: &[(NodeIndex, f64)], post_activations: &[(NodeIndex, f64)], config: &OjaConfig) -> usize
+```
+
+### BCM rule
+
+Homeostatic plasticity with per-node sliding threshold. Prevents runaway
+strengthening.
+
+```rust
+pub struct BcmConfig {
+    pub learning_rate: f64,   // default: 0.01
+    pub threshold_rate: f64,  // default: 0.001
+}
+
+pub struct BcmState { pub thresholds: Vec<f64> }
+
+pub fn bcm_update<N, Ty: EdgeType>(graph: &mut StableGraph<N, f64, Ty>, activated: &[(NodeIndex, f64)], state: &mut BcmState, config: &BcmConfig) -> usize
+```
+
 ## Module: `mst`
 
 ### Deviations from graphalgs

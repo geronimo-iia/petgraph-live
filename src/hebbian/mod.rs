@@ -4,6 +4,8 @@
 //! - **SOKM** — decay → strengthen → prune per tick (cooperative)
 //! - **STDP** — spike-timing dependent plasticity (temporal)
 //! - **Anti-Hebbian** — lateral inhibition (competitive)
+//! - **Oja** — normalized Hebbian, self-converging weights
+//! - **BCM** — homeostatic plasticity with sliding threshold
 //!
 //! # Examples
 //!
@@ -21,9 +23,13 @@
 //! ```
 
 mod anti_hebbian;
+mod bcm;
+mod oja;
 mod sokm;
 mod stdp;
 
 pub use anti_hebbian::{AntiHebbianConfig, anti_hebbian_update};
+pub use bcm::{BcmConfig, BcmState, bcm_update};
+pub use oja::{OjaConfig, oja_update};
 pub use sokm::{HebbianReport, SokmConfig, StrengthFormula, decay, prune, sokm_tick, strengthen};
 pub use stdp::{StdpConfig, TimedActivation, stdp_update};

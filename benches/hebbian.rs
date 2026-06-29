@@ -1,8 +1,8 @@
 use criterion::{Criterion, criterion_group, criterion_main};
 use petgraph::stable_graph::StableDiGraph;
 use petgraph_live::hebbian::{
-    AntiHebbianConfig, SokmConfig, StdpConfig, anti_hebbian_update, decay, prune, sokm_tick,
-    stdp_update, strengthen,
+    AntiHebbianConfig, BcmConfig, BcmState, OjaConfig, SokmConfig, StdpConfig,
+    anti_hebbian_update, bcm_update, decay, oja_update, prune, sokm_tick, stdp_update, strengthen,
 };
 
 fn build_graph(n: usize) -> StableDiGraph<(), f64> {
@@ -84,8 +84,28 @@ fn bench_anti_hebbian(c: &mut Criterion) {
     let mut g = build_graph(1000);
     let nodes: Vec<_> = g.node_indices().take(20).map(|n| (n, 0.8)).collect();
     let config = AntiHebbianConfig::default();
-    c.bench_function("anti_hebbian_20_activated_1000_nodes", |b| {
+    c.bench_function("anti_hebbian_20_activated_5k_edges", |b| {
         b.iter(|| anti_hebbian_update(&mut g, &nodes, &config));
+    });
+}
+
+fn bench_oja(c: &mut Criterion) {
+    let mut g = build_graph(1000);
+    let pre: Vec<_> = g.node_indices().take(10).map(|n| (n, 0.8)).collect();
+    let post: Vec<_> = g.node_indices().skip(5).take(10).map(|n| (n, 0.7)).collect();
+    let config = OjaConfig::default();
+    c.bench_function("oja_10x10_activated_5k_edges", |b| {
+        b.iter(|| oja_update(&mut g, &pre, &post, &config));
+    });
+}
+
+fn bench_bcm(c: &mut Criterion) {
+    let mut g = build_graph(1000);
+    let nodes: Vec<_> = g.node_indices().take(20).map(|n| (n, 0.8)).collect();
+    let mut state = BcmState::new(1000, 0.5);
+    let config = BcmConfig::default();
+    c.bench_function("bcm_20_activated_5k_edges", |b| {
+        b.iter(|| bcm_update(&mut g, &nodes, &mut state, &config));
     });
 }
 
@@ -98,6 +118,8 @@ criterion_group!(
     bench_prune,
     bench_sokm_tick,
     bench_stdp,
-    bench_anti_hebbian
+    bench_anti_hebbian,
+    bench_oja,
+    bench_bcm
 );
 criterion_main!(benches);

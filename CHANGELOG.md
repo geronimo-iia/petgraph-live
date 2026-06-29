@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `hebbian` module — SOKM (Self-Organizing Knowledge Map) algorithm: `decay`, `strengthen`, `prune`, `sokm_tick`; works on both directed and undirected `StableGraph<N, f64, Ty>`; config types `SokmConfig`, `StrengthFormula`, `HebbianReport`; example `hebbian_sokm`; criterion benchmark
 - `hebbian::stdp_update` — Spike-Timing Dependent Plasticity: causal pairs strengthened, anti-causal weakened, with exponential time decay
 - `hebbian::anti_hebbian_update` — lateral inhibition: weakens edges between co-activated nodes (competitive learning)
+- `hebbian::oja_update` — Oja's normalized Hebbian rule: self-converging weights toward principal component
+- `hebbian::bcm_update` — BCM homeostatic plasticity: sliding threshold prevents runaway strengthening
 
 ## [0.3.1] — 2026-05-03
 
