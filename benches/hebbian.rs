@@ -20,7 +20,14 @@ fn build_graph(n: usize) -> StableDiGraph<(), f64> {
 
 fn bench_decay(c: &mut Criterion) {
     let mut g = build_graph(1000);
-    c.bench_function("decay_1000_nodes", |b| {
+    c.bench_function("decay_5k_edges", |b| {
+        b.iter(|| decay(&mut g, 0.95));
+    });
+}
+
+fn bench_decay_100k(c: &mut Criterion) {
+    let mut g = build_graph(20_000); // 20K nodes × 5 = 100K edges
+    c.bench_function("decay_100k_edges", |b| {
         b.iter(|| decay(&mut g, 0.95));
     });
 }
@@ -29,7 +36,16 @@ fn bench_strengthen(c: &mut Criterion) {
     let mut g = build_graph(1000);
     let nodes: Vec<_> = g.node_indices().take(20).map(|n| (n, 0.8)).collect();
     let config = SokmConfig::default();
-    c.bench_function("strengthen_20_activated_1000_nodes", |b| {
+    c.bench_function("strengthen_20_activated_5k_edges", |b| {
+        b.iter(|| strengthen(&mut g, &nodes, &config));
+    });
+}
+
+fn bench_strengthen_10(c: &mut Criterion) {
+    let mut g = build_graph(1000);
+    let nodes: Vec<_> = g.node_indices().take(10).map(|n| (n, 0.8)).collect();
+    let config = SokmConfig::default();
+    c.bench_function("strengthen_10_activated_5k_edges", |b| {
         b.iter(|| strengthen(&mut g, &nodes, &config));
     });
 }
@@ -76,7 +92,9 @@ fn bench_anti_hebbian(c: &mut Criterion) {
 criterion_group!(
     benches,
     bench_decay,
+    bench_decay_100k,
     bench_strengthen,
+    bench_strengthen_10,
     bench_prune,
     bench_sokm_tick,
     bench_stdp,
