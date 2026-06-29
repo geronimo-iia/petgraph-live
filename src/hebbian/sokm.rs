@@ -220,10 +220,31 @@ mod tests {
     }
 
     #[test]
+    fn decay_repeated_converges() {
+        let mut g = StableDiGraph::<(), f64>::new();
+        let a = g.add_node(());
+        let b = g.add_node(());
+        g.add_edge(a, b, 1.0);
+
+        for _ in 0..10 {
+            decay(&mut g, 0.95);
+        }
+        let expected = 0.95f64.powi(10);
+        assert!((g.edge_weight(0.into()).unwrap() - expected).abs() < 1e-10);
+    }
+
+    #[test]
     fn prune_removes_below_threshold() {
         let mut g = make_graph();
         assert_eq!(prune(&mut g, 0.1), 1); // removes 0.01 edge
         assert_eq!(g.edge_count(), 2);
+    }
+
+    #[test]
+    fn prune_retains_above_threshold() {
+        let mut g = make_graph();
+        assert_eq!(prune(&mut g, 0.001), 0);
+        assert_eq!(g.edge_count(), 3);
     }
 
     #[test]
@@ -236,6 +257,39 @@ mod tests {
         let config = SokmConfig::default();
         strengthen(&mut g, &[(a, 1.0), (b, 1.0)], &config);
         assert_eq!(g.edge_count(), 2); // a→b and b→a
+    }
+
+    #[test]
+    fn strengthen_higher_scores_get_more() {
+        let mut g1 = StableDiGraph::<(), f64>::new();
+        let a1 = g1.add_node(());
+        let b1 = g1.add_node(());
+
+        let mut g2 = StableDiGraph::<(), f64>::new();
+        let a2 = g2.add_node(());
+        let b2 = g2.add_node(());
+
+        let config = SokmConfig::default();
+        strengthen(&mut g1, &[(a1, 0.5), (b1, 0.5)], &config);
+        strengthen(&mut g2, &[(a2, 1.0), (b2, 1.0)], &config);
+
+        let w1 = *g1.edge_weight(g1.find_edge(a1, b1).unwrap()).unwrap();
+        let w2 = *g2.edge_weight(g2.find_edge(a2, b2).unwrap()).unwrap();
+        assert!(w2 > w1);
+    }
+
+    #[test]
+    fn strengthen_non_activated_pairs_unchanged() {
+        let mut g = StableDiGraph::<(), f64>::new();
+        let a = g.add_node(());
+        let b = g.add_node(());
+        let c = g.add_node(());
+        g.add_edge(b, c, 0.5);
+
+        let config = SokmConfig::default();
+        // only a is activated — no pairs to strengthen
+        strengthen(&mut g, &[(a, 1.0)], &config);
+        assert_eq!(*g.edge_weight(0.into()).unwrap(), 0.5);
     }
 
     #[test]
