@@ -4,7 +4,7 @@
 //!
 //! | Feature | Description |
 //! |---|---|
-//! | *(default)* | [`cache`], [`metrics`], [`connect`], [`shortest_path`], [`mst`] |
+//! | *(default)* | [`cache`], [`metrics`], [`connect`], [`shortest_path`], [`mst`], [`hebbian`] |
 //! | `snapshot` | Disk persistence via bincode or JSON |
 //! | `snapshot-zstd` | Zstd compression for snapshots (implies `snapshot`) |
 //! | `snapshot-lz4` | LZ4 compression via `lz4_flex` (implies `snapshot`) |
@@ -26,6 +26,7 @@
 
 pub mod cache;
 pub mod connect;
+pub mod hebbian;
 pub mod metrics;
 pub mod mst;
 pub mod shortest_path;
