@@ -26,6 +26,7 @@ the operational layer missing for long-running processes:
   - `connect`: articulation points, bridges
   - `shortest_path`: Floyd-Warshall, Seidel APSP, BFS distances, petgraph re-exports
   - `mst`: Prim, Borůvka, Kruskal (petgraph re-export)
+  - `hebbian`: SOKM, STDP, anti-Hebbian, Oja, BCM — dynamic edge-weight learning
 
 All algorithms work on any `DiGraph<N, E>` — no domain concepts inside this crate.
 
@@ -47,6 +48,21 @@ let c = metrics::center(&graph);     // most central nodes
 // Connectivity analysis
 let ap = connect::articulation_points(&graph);
 let br = connect::find_bridges(&graph);
+```
+
+Hebbian learning (dynamic edge weights):
+
+```rust
+use petgraph::stable_graph::StableDiGraph;
+use petgraph_live::hebbian::{sokm_tick, SokmConfig};
+
+let mut graph = StableDiGraph::<&str, f64>::new();
+let a = graph.add_node("A");
+let b = graph.add_node("B");
+graph.add_edge(a, b, 0.5);
+
+// One SOKM tick: decay → strengthen → prune
+let report = sokm_tick(&mut graph, &[(a, 1.0), (b, 0.8)], &SokmConfig::default());
 ```
 
 With snapshot (requires `features = ["snapshot"]`):
@@ -81,7 +97,7 @@ let graph = state.get_fresh()?;     // checks key, rebuilds if stale
 
 | Flag | Adds |
 |---|---|
-| _(default)_ | `cache`, `metrics`, `connect`, `shortest_path`, `mst` |
+| _(default)_ | `cache`, `metrics`, `connect`, `shortest_path`, `mst`, `hebbian` |
 | `snapshot` | `snapshot`, `live` |
 | `snapshot-zstd` | zstd compression for snapshots (implies `snapshot`) |
 | `snapshot-lz4` | LZ4 compression for snapshots via `lz4_flex` (implies `snapshot`) |
