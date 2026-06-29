@@ -1,6 +1,6 @@
 # petgraph-live — Roadmap
 
-**Current status:** v0.3.0 released.
+**Current status:** v0.4.0 released.
 
 ## Futur improvments
 
