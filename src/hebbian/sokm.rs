@@ -1,7 +1,8 @@
 //! SOKM (Self-Organizing Knowledge Map) — decay → strengthen → prune.
 
+use petgraph::EdgeType;
 use petgraph::graph::NodeIndex;
-use petgraph::stable_graph::StableDiGraph;
+use petgraph::stable_graph::StableGraph;
 
 /// Configuration for SOKM dynamics.
 #[derive(Debug, Clone, Copy)]
@@ -66,7 +67,7 @@ pub struct HebbianReport {
 /// assert_eq!(decay(&mut g, 0.5), 1);
 /// assert_eq!(*g.edge_weight(0.into()).unwrap(), 0.5);
 /// ```
-pub fn decay<N>(graph: &mut StableDiGraph<N, f64>, factor: f64) -> usize {
+pub fn decay<N, Ty: EdgeType>(graph: &mut StableGraph<N, f64, Ty>, factor: f64) -> usize {
     let indices: Vec<_> = graph.edge_indices().collect();
     for &idx in &indices {
         if let Some(w) = graph.edge_weight_mut(idx) {
@@ -78,10 +79,13 @@ pub fn decay<N>(graph: &mut StableDiGraph<N, f64>, factor: f64) -> usize {
 
 /// Strengthen edges between co-activated node pairs.
 ///
-/// For each ordered pair (a, b) in `activated`, increments the edge weight
+/// For each pair (a, b) in `activated`, increments the edge weight
 /// using the configured formula. Creates the edge if it does not exist.
 ///
-/// Returns number of pairs strengthened.
+/// For directed graphs, both (a→b) and (b→a) are processed.
+/// For undirected graphs, each unordered pair is processed once.
+///
+/// Returns number of edges strengthened.
 ///
 /// # Examples
 ///
@@ -100,14 +104,15 @@ pub fn decay<N>(graph: &mut StableDiGraph<N, f64>, factor: f64) -> usize {
 /// assert_eq!(count, 2); // a→b and b→a
 /// assert_eq!(g.edge_count(), 2);
 /// ```
-pub fn strengthen<N>(
-    graph: &mut StableDiGraph<N, f64>,
+pub fn strengthen<N, Ty: EdgeType>(
+    graph: &mut StableGraph<N, f64, Ty>,
     activated: &[(NodeIndex, f64)],
     config: &SokmConfig,
 ) -> usize {
     let mut count = 0;
     for i in 0..activated.len() {
-        for j in 0..activated.len() {
+        let j_start = if Ty::is_directed() { 0 } else { i + 1 };
+        for j in j_start..activated.len() {
             if i == j {
                 continue;
             }
@@ -148,14 +153,10 @@ pub fn strengthen<N>(
 /// assert_eq!(prune(&mut g, 0.001), 1);
 /// assert_eq!(g.edge_count(), 1);
 /// ```
-pub fn prune<N>(graph: &mut StableDiGraph<N, f64>, threshold: f64) -> usize {
+pub fn prune<N, Ty: EdgeType>(graph: &mut StableGraph<N, f64, Ty>, threshold: f64) -> usize {
     let to_remove: Vec<_> = graph
         .edge_indices()
-        .filter(|&idx| {
-            graph
-                .edge_weight(idx)
-                .map_or(false, |&w| w < threshold)
-        })
+        .filter(|&idx| graph.edge_weight(idx).map_or(false, |&w| w < threshold))
         .collect();
     let count = to_remove.len();
     for idx in to_remove {
@@ -181,8 +182,8 @@ pub fn prune<N>(graph: &mut StableDiGraph<N, f64>, threshold: f64) -> usize {
 /// assert_eq!(report.decayed, 1);
 /// assert!(report.strengthened > 0);
 /// ```
-pub fn sokm_tick<N>(
-    graph: &mut StableDiGraph<N, f64>,
+pub fn sokm_tick<N, Ty: EdgeType>(
+    graph: &mut StableGraph<N, f64, Ty>,
     activated: &[(NodeIndex, f64)],
     config: &SokmConfig,
 ) -> HebbianReport {
@@ -199,6 +200,7 @@ pub fn sokm_tick<N>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use petgraph::stable_graph::{StableDiGraph, StableUnGraph};
 
     fn make_graph() -> StableDiGraph<(), f64> {
         let mut g = StableDiGraph::new();
@@ -236,7 +238,7 @@ mod tests {
     #[test]
     fn prune_removes_below_threshold() {
         let mut g = make_graph();
-        assert_eq!(prune(&mut g, 0.1), 1); // removes 0.01 edge
+        assert_eq!(prune(&mut g, 0.1), 1);
         assert_eq!(g.edge_count(), 2);
     }
 
@@ -252,7 +254,6 @@ mod tests {
         let mut g = StableDiGraph::<(), f64>::new();
         let a = g.add_node(());
         let b = g.add_node(());
-        assert_eq!(g.edge_count(), 0);
 
         let config = SokmConfig::default();
         strengthen(&mut g, &[(a, 1.0), (b, 1.0)], &config);
@@ -282,12 +283,11 @@ mod tests {
     fn strengthen_non_activated_pairs_unchanged() {
         let mut g = StableDiGraph::<(), f64>::new();
         let a = g.add_node(());
-        let b = g.add_node(());
+        let _b = g.add_node(());
         let c = g.add_node(());
-        g.add_edge(b, c, 0.5);
+        g.add_edge(a, c, 0.5);
 
         let config = SokmConfig::default();
-        // only a is activated — no pairs to strengthen
         strengthen(&mut g, &[(a, 1.0)], &config);
         assert_eq!(*g.edge_weight(0.into()).unwrap(), 0.5);
     }
@@ -301,7 +301,6 @@ mod tests {
 
         let config = SokmConfig::default();
         strengthen(&mut g, &[(a, 1.0), (b, 1.0)], &config);
-        // 0.5 + 0.02*1.0*1.0 = 0.52
         assert!((g.edge_weight(0.into()).unwrap() - 0.52).abs() < 1e-10);
     }
 
@@ -310,14 +309,12 @@ mod tests {
         let mut g = StableDiGraph::<(), f64>::new();
         let a = g.add_node(());
         let b = g.add_node(());
-        g.add_edge(a, b, 0.0005); // will be pruned after decay
+        g.add_edge(a, b, 0.0005);
 
         let config = SokmConfig::default();
         let report = sokm_tick(&mut g, &[(a, 1.0), (b, 1.0)], &config);
         assert_eq!(report.decayed, 1);
         assert_eq!(report.strengthened, 2);
-        // 0.0005 * 0.95 = 0.000475, then +0.02 = 0.020475, not pruned
-        // But b→a is newly created at 0.02, not pruned either
         assert_eq!(report.pruned, 0);
     }
 
@@ -327,7 +324,7 @@ mod tests {
         let a = g.add_node(());
         let b = g.add_node(());
         let c = g.add_node(());
-        g.add_edge(a, c, 0.0005); // decays to 0.000475, no co-activation → pruned
+        g.add_edge(a, c, 0.0005);
 
         let config = SokmConfig::default();
         let report = sokm_tick(&mut g, &[(a, 1.0), (b, 1.0)], &config);
@@ -345,7 +342,6 @@ mod tests {
             ..SokmConfig::default()
         };
         strengthen(&mut g, &[(a, 0.8), (b, 0.3)], &config);
-        // delta * min(0.8, 0.3) = 0.02 * 0.3 = 0.006
         assert!((g.edge_weight(0.into()).unwrap() - 0.006).abs() < 1e-10);
     }
 
@@ -360,7 +356,37 @@ mod tests {
             ..SokmConfig::default()
         };
         strengthen(&mut g, &[(a, 0.8), (b, 0.4)], &config);
-        // delta * (0.8 + 0.4) / 2 = 0.02 * 0.6 = 0.012
         assert!((g.edge_weight(0.into()).unwrap() - 0.012).abs() < 1e-10);
+    }
+
+    #[test]
+    fn undirected_strengthen_single_edge_per_pair() {
+        let mut g = StableUnGraph::<(), f64>::with_capacity(0, 0);
+        let a = g.add_node(());
+        let b = g.add_node(());
+
+        let config = SokmConfig::default();
+        let count = strengthen(&mut g, &[(a, 1.0), (b, 1.0)], &config);
+        // Undirected: only one edge created for pair (a,b)
+        assert_eq!(count, 1);
+        assert_eq!(g.edge_count(), 1);
+        assert!((g.edge_weight(0.into()).unwrap() - 0.02).abs() < 1e-10);
+    }
+
+    #[test]
+    fn undirected_sokm_tick() {
+        let mut g = StableUnGraph::<(), f64>::with_capacity(0, 0);
+        let a = g.add_node(());
+        let b = g.add_node(());
+        let c = g.add_node(());
+        g.add_edge(a, b, 0.5);
+        g.add_edge(b, c, 0.0005);
+
+        let config = SokmConfig::default();
+        let report = sokm_tick(&mut g, &[(a, 1.0), (b, 0.9)], &config);
+        assert_eq!(report.decayed, 2);
+        assert_eq!(report.strengthened, 1);
+        // b-c: 0.0005*0.95 = 0.000475 < 0.001 → pruned
+        assert_eq!(report.pruned, 1);
     }
 }
