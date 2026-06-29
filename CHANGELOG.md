@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.4.0] — 2026-06-29
 
 ### Added
 - `hebbian` module — SOKM (Self-Organizing Knowledge Map) algorithm: `decay`, `strengthen`, `prune`, `sokm_tick`; works on both directed and undirected `StableGraph<N, f64, Ty>`; config types `SokmConfig`, `StrengthFormula`, `HebbianReport`; example `hebbian_sokm`; criterion benchmark
@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `hebbian::anti_hebbian_update` — lateral inhibition: weakens edges between co-activated nodes (competitive learning)
 - `hebbian::oja_update` — Oja's normalized Hebbian rule: self-converging weights toward principal component
 - `hebbian::bcm_update` — BCM homeostatic plasticity: sliding threshold prevents runaway strengthening
+
+## [Unreleased]
 
 ## [0.3.1] — 2026-05-03
 
@@ -54,5 +56,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `SECURITY.md`, `docs/release.md`, `docs/specifications/` index,
   `docs/roadmap.md`, `docs/api-design.md`
 
+[0.4.0]: https://github.com/geronimo-iia/petgraph-live/compare/v0.3.1...v0.4.0
+[0.3.1]: https://github.com/geronimo-iia/petgraph-live/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/geronimo-iia/petgraph-live/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/geronimo-iia/petgraph-live/releases/tag/v0.2.0

@@ -1,5 +1,5 @@
 use petgraph::stable_graph::StableDiGraph;
-use petgraph_live::hebbian::{sokm_tick, SokmConfig};
+use petgraph_live::hebbian::{SokmConfig, sokm_tick};
 
 fn main() {
     // Build a small knowledge graph with weighted edges
@@ -48,9 +48,6 @@ fn print_edges(graph: &StableDiGraph<&str, f64>) {
     for idx in graph.edge_indices() {
         let (src, dst) = graph.edge_endpoints(idx).unwrap();
         let w = graph.edge_weight(idx).unwrap();
-        println!(
-            "  {} -> {} : {:.6}",
-            graph[src], graph[dst], w
-        );
+        println!("  {} -> {} : {:.6}", graph[src], graph[dst], w);
     }
 }

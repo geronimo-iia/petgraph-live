@@ -60,11 +60,11 @@ pub fn anti_hebbian_update<N, Ty: EdgeType>(
             let (nb, sb) = activated[j];
             let decrement = config.beta * sa * sb;
 
-            if let Some(idx) = graph.find_edge(na, nb) {
-                if let Some(w) = graph.edge_weight_mut(idx) {
-                    *w -= decrement;
-                    count += 1;
-                }
+            if let Some(idx) = graph.find_edge(na, nb)
+                && let Some(w) = graph.edge_weight_mut(idx)
+            {
+                *w -= decrement;
+                count += 1;
             }
         }
     }

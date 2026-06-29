@@ -11,7 +11,9 @@ fn main() {
     graph.add_edge(x1, y, 0.3);
     graph.add_edge(x2, y, 0.7);
 
-    let config = OjaConfig { learning_rate: 0.05 };
+    let config = OjaConfig {
+        learning_rate: 0.05,
+    };
 
     println!("--- Oja's rule: weights converge to principal component ---");
     println!("Initial:");

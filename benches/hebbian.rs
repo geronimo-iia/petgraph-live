@@ -1,8 +1,8 @@
 use criterion::{Criterion, criterion_group, criterion_main};
 use petgraph::stable_graph::StableDiGraph;
 use petgraph_live::hebbian::{
-    AntiHebbianConfig, BcmConfig, BcmState, OjaConfig, SokmConfig, StdpConfig,
-    anti_hebbian_update, bcm_update, decay, oja_update, prune, sokm_tick, stdp_update, strengthen,
+    AntiHebbianConfig, BcmConfig, BcmState, OjaConfig, SokmConfig, StdpConfig, anti_hebbian_update,
+    bcm_update, decay, oja_update, prune, sokm_tick, stdp_update, strengthen,
 };
 
 fn build_graph(n: usize) -> StableDiGraph<(), f64> {
@@ -92,7 +92,12 @@ fn bench_anti_hebbian(c: &mut Criterion) {
 fn bench_oja(c: &mut Criterion) {
     let mut g = build_graph(1000);
     let pre: Vec<_> = g.node_indices().take(10).map(|n| (n, 0.8)).collect();
-    let post: Vec<_> = g.node_indices().skip(5).take(10).map(|n| (n, 0.7)).collect();
+    let post: Vec<_> = g
+        .node_indices()
+        .skip(5)
+        .take(10)
+        .map(|n| (n, 0.7))
+        .collect();
     let config = OjaConfig::default();
     c.bench_function("oja_10x10_activated_5k_edges", |b| {
         b.iter(|| oja_update(&mut g, &pre, &post, &config));

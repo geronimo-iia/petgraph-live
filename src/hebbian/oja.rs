@@ -16,7 +16,9 @@ pub struct OjaConfig {
 
 impl Default for OjaConfig {
     fn default() -> Self {
-        Self { learning_rate: 0.01 }
+        Self {
+            learning_rate: 0.01,
+        }
     }
 }
 
@@ -57,12 +59,12 @@ pub fn oja_update<N, Ty: EdgeType>(
             if pre_node == post_node {
                 continue;
             }
-            if let Some(idx) = graph.find_edge(pre_node, post_node) {
-                if let Some(w) = graph.edge_weight_mut(idx) {
-                    // Δw = η × y × (x − w × y)
-                    *w += config.learning_rate * y * (x - *w * y);
-                    modified += 1;
-                }
+            if let Some(idx) = graph.find_edge(pre_node, post_node)
+                && let Some(w) = graph.edge_weight_mut(idx)
+            {
+                // Δw = η × y × (x − w × y)
+                *w += config.learning_rate * y * (x - *w * y);
+                modified += 1;
             }
         }
     }

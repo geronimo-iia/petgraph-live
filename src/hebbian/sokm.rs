@@ -156,7 +156,7 @@ pub fn strengthen<N, Ty: EdgeType>(
 pub fn prune<N, Ty: EdgeType>(graph: &mut StableGraph<N, f64, Ty>, threshold: f64) -> usize {
     let to_remove: Vec<_> = graph
         .edge_indices()
-        .filter(|&idx| graph.edge_weight(idx).map_or(false, |&w| w < threshold))
+        .filter(|&idx| graph.edge_weight(idx).is_some_and(|&w| w < threshold))
         .collect();
     let count = to_remove.len();
     for idx in to_remove {

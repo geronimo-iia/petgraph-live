@@ -99,11 +99,11 @@ pub fn bcm_update<N, Ty: EdgeType>(
             // Δw = η × y × (y − θ) × x
             let delta_w = config.learning_rate * y * (y - theta) * x;
 
-            if let Some(edge_idx) = graph.find_edge(pre_node, post_node) {
-                if let Some(w) = graph.edge_weight_mut(edge_idx) {
-                    *w += delta_w;
-                    modified += 1;
-                }
+            if let Some(edge_idx) = graph.find_edge(pre_node, post_node)
+                && let Some(w) = graph.edge_weight_mut(edge_idx)
+            {
+                *w += delta_w;
+                modified += 1;
             }
         }
     }
@@ -168,7 +168,12 @@ mod tests {
         let b = g.add_node(());
 
         let mut state = BcmState::new(2, 0.5);
-        let modified = bcm_update(&mut g, &[(a, 0.8), (b, 0.8)], &mut state, &BcmConfig::default());
+        let modified = bcm_update(
+            &mut g,
+            &[(a, 0.8), (b, 0.8)],
+            &mut state,
+            &BcmConfig::default(),
+        );
         assert_eq!(modified, 0);
     }
 
@@ -183,7 +188,6 @@ mod tests {
         let config = BcmConfig {
             threshold_rate: 0.5,
             learning_rate: 0.01,
-            ..BcmConfig::default()
         };
 
         // Repeated high activation raises threshold → eventually weakens
