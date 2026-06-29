@@ -146,6 +146,39 @@ Each tick executes three phases in order:
 2. **Strengthen** — for each co-activated pair, increment edge weight by formula
 3. **Prune** — remove edges with weight below `min_weight`
 
+### STDP algorithm
+
+Spiking-Timing Dependent Plasticity. For each directed edge (pre → post)
+where both endpoints fired:
+- Causal (pre fires before post): Δw = +a_plus × exp(-Δt / tau_plus)
+- Anti-causal (post fires before pre): Δw = -a_minus × exp(-Δt / tau_minus)
+
+```rust
+pub struct StdpConfig {
+    pub a_plus: f64,     // default: 0.01
+    pub a_minus: f64,    // default: 0.005
+    pub tau_plus: f64,   // default: 5.0
+    pub tau_minus: f64,  // default: 5.0
+}
+
+pub type TimedActivation = (NodeIndex, f64, u64);
+
+pub fn stdp_update<N, Ty: EdgeType>(graph: &mut StableGraph<N, f64, Ty>, activations: &[TimedActivation], config: &StdpConfig) -> usize
+```
+
+### Anti-Hebbian algorithm
+
+Lateral inhibition — weakens edges between co-activated nodes. Opposite of
+SOKM strengthen. Forces specialization.
+
+```rust
+pub struct AntiHebbianConfig {
+    pub beta: f64,  // default: 0.005
+}
+
+pub fn anti_hebbian_update<N, Ty: EdgeType>(graph: &mut StableGraph<N, f64, Ty>, activated: &[(NodeIndex, f64)], config: &AntiHebbianConfig) -> usize
+```
+
 ## Module: `mst`
 
 ### Deviations from graphalgs

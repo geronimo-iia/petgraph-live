@@ -1,7 +1,9 @@
 //! Hebbian learning on graphs: self-organizing dynamics that modify edge weights.
 //!
-//! The primary algorithm is **SOKM** (Self-Organizing Knowledge Map):
-//! decay → strengthen → prune per tick.
+//! Algorithms:
+//! - **SOKM** — decay → strengthen → prune per tick (cooperative)
+//! - **STDP** — spike-timing dependent plasticity (temporal)
+//! - **Anti-Hebbian** — lateral inhibition (competitive)
 //!
 //! # Examples
 //!
@@ -18,8 +20,10 @@
 //! let report = sokm_tick(&mut graph, &activated, &SokmConfig::default());
 //! ```
 
+mod anti_hebbian;
 mod sokm;
+mod stdp;
 
-pub use sokm::{
-    decay, prune, sokm_tick, strengthen, HebbianReport, SokmConfig, StrengthFormula,
-};
+pub use anti_hebbian::{AntiHebbianConfig, anti_hebbian_update};
+pub use sokm::{HebbianReport, SokmConfig, StrengthFormula, decay, prune, sokm_tick, strengthen};
+pub use stdp::{StdpConfig, TimedActivation, stdp_update};
