@@ -593,8 +593,8 @@ fn test_inspect_partial_read_bincode() {
     // Read the valid file to extract the meta header bytes
     let good_path = dir.path().join("mygraph-goodkey.snap");
     let raw = std::fs::read(&good_path).unwrap();
-    let meta_len = u64::from_le_bytes(raw[..8].try_into().unwrap()) as usize;
-    let header = &raw[..8 + meta_len];
+    let meta_len = u64::from_le_bytes(raw[4..12].try_into().unwrap()) as usize;
+    let header = &raw[..12 + meta_len];
 
     // Build a file: valid header + garbage bytes
     let mut bad_bytes = header.to_vec();
@@ -869,4 +869,32 @@ fn test_load_or_build_rebuilds_on_legacy_file() {
     // File should have been replaced with valid v2
     let snap_bytes = std::fs::read(&snap_path).unwrap();
     assert_eq!(&snap_bytes[..4], b"PGL\x02", "new file must have magic bytes");
+}
+
+#[cfg(feature = "snapshot")]
+#[test]
+fn test_load_returns_legacy_format_for_old_snap() {
+    use petgraph::Graph;
+    use petgraph_live::snapshot::{Compression, SnapshotConfig, SnapshotError, SnapshotFormat, load};
+    let dir = tempfile::tempdir().unwrap();
+    let cfg = SnapshotConfig {
+        dir: dir.path().to_path_buf(),
+        name: "g".into(),
+        key: Some("v1".into()),
+        format: SnapshotFormat::Bincode,
+        compression: Compression::None,
+        keep: 3,
+    };
+    // Fake v1 file: u64 le(5) + 5 junk bytes (no magic prefix)
+    let snap_path = dir.path().join("g-v1.snap");
+    let mut fake = 5u64.to_le_bytes().to_vec();
+    fake.extend_from_slice(b"hello");
+    std::fs::write(&snap_path, &fake).unwrap();
+
+    let result: Result<Option<Graph<String, ()>>, _> = load(&cfg);
+    assert!(
+        matches!(result, Err(SnapshotError::LegacyFormat { .. })),
+        "expected LegacyFormat, got {:?}",
+        result
+    );
 }
