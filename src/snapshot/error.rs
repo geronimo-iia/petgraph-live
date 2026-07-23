@@ -21,6 +21,9 @@ pub enum SnapshotError {
     /// The snapshot directory contains no files matching the configured name.
     #[error("no snapshot found")]
     NoSnapshotFound,
+    /// Snapshot file uses the old bincode wire format; delete the file and rebuild.
+    #[error("legacy bincode snapshot at {path:?}; delete and rebuild")]
+    LegacyFormat { path: std::path::PathBuf },
 }
 
 // std::io::Error doesn't impl PartialEq; compare Io variants by ErrorKind
@@ -33,6 +36,7 @@ impl PartialEq for SnapshotError {
             (Self::ParseError(a), Self::ParseError(b)) => a == b,
             (Self::CompressionError(a), Self::CompressionError(b)) => a == b,
             (Self::NoSnapshotFound, Self::NoSnapshotFound) => true,
+            (Self::LegacyFormat { path: a }, Self::LegacyFormat { path: b }) => a == b,
             _ => false,
         }
     }

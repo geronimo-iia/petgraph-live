@@ -74,6 +74,27 @@ fn test_error_display() {
 
 #[cfg(feature = "snapshot")]
 #[test]
+fn test_error_legacy_format_display() {
+    use petgraph_live::snapshot::SnapshotError;
+    use std::path::PathBuf;
+    let err = SnapshotError::LegacyFormat { path: PathBuf::from("/tmp/old.snap") };
+    assert!(err.to_string().contains("legacy"));
+}
+
+#[cfg(feature = "snapshot")]
+#[test]
+fn test_error_legacy_format_partial_eq() {
+    use petgraph_live::snapshot::SnapshotError;
+    use std::path::PathBuf;
+    let a = SnapshotError::LegacyFormat { path: PathBuf::from("/a.snap") };
+    let b = SnapshotError::LegacyFormat { path: PathBuf::from("/a.snap") };
+    let c = SnapshotError::LegacyFormat { path: PathBuf::from("/b.snap") };
+    assert_eq!(a, b);
+    assert_ne!(a, c);
+}
+
+#[cfg(feature = "snapshot")]
+#[test]
 fn test_rotation_keep_3() {
     use petgraph_live::snapshot::rotation::{keep_n, list_snapshot_files};
     use std::{
