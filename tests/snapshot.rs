@@ -832,3 +832,41 @@ fn test_inspect_returns_legacy_format_for_old_snap() {
         result
     );
 }
+
+#[cfg(feature = "snapshot")]
+#[test]
+fn test_load_or_build_rebuilds_on_legacy_file() {
+    use petgraph::Graph;
+    use petgraph_live::snapshot::{Compression, SnapshotConfig, SnapshotFormat, load_or_build};
+    let dir = tempfile::tempdir().unwrap();
+    let cfg = SnapshotConfig {
+        dir: dir.path().to_path_buf(),
+        name: "g".into(),
+        key: Some("v1".into()),
+        format: SnapshotFormat::Bincode,
+        compression: Compression::None,
+        keep: 3,
+    };
+
+    // Write a fake v1 (bincode-era) file: 8 zero bytes followed by junk.
+    // The first 4 bytes are \x00\x00\x00\x00 — not b"PGL\x02" — so LegacyFormat fires.
+    let snap_path = dir.path().join("g-v1.snap");
+    let mut fake = vec![0u8; 8];
+    fake.extend_from_slice(b"garbage");
+    std::fs::write(&snap_path, &fake).unwrap();
+
+    let mut built = false;
+    let graph: Graph<String, ()> = load_or_build(&cfg, || {
+        built = true;
+        let mut g: Graph<String, ()> = Graph::new();
+        g.add_node("rebuilt".into());
+        Ok(g)
+    })
+    .unwrap();
+
+    assert!(built, "build fn should have been called");
+    assert_eq!(graph.node_count(), 1);
+    // File should have been replaced with valid v2
+    let snap_bytes = std::fs::read(&snap_path).unwrap();
+    assert_eq!(&snap_bytes[..4], b"PGL\x02", "new file must have magic bytes");
+}

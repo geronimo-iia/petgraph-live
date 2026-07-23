@@ -375,7 +375,10 @@ where
 {
     match load(cfg) {
         Ok(Some(g)) => Ok(g),
-        Ok(None) | Err(SnapshotError::KeyNotFound { .. }) | Err(SnapshotError::NoSnapshotFound) => {
+        Ok(None)
+        | Err(SnapshotError::KeyNotFound { .. })
+        | Err(SnapshotError::NoSnapshotFound)
+        | Err(SnapshotError::LegacyFormat { .. }) => {
             let g = build()?;
             if let Err(e) = save(cfg, &g) {
                 eprintln!("warn: snapshot save failed: {}", e);
