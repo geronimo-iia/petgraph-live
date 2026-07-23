@@ -784,3 +784,24 @@ fn save_creates_missing_directory() {
 
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[cfg(feature = "snapshot")]
+#[test]
+fn test_save_load_roundtrip_postcard() {
+    use petgraph::Graph;
+    use petgraph_live::snapshot::{Compression, SnapshotConfig, SnapshotFormat, load, save};
+    let dir = tempfile::tempdir().unwrap();
+    let cfg = SnapshotConfig {
+        dir: dir.path().to_path_buf(),
+        name: "g".into(),
+        key: Some("v1".into()),
+        format: SnapshotFormat::Bincode,
+        compression: Compression::None,
+        keep: 3,
+    };
+    let mut g: Graph<String, ()> = Graph::new();
+    g.add_node("hello".into());
+    save(&cfg, &g).unwrap();
+    let loaded: Option<Graph<String, ()>> = load(&cfg).unwrap();
+    assert_eq!(loaded.unwrap().node_count(), 1);
+}

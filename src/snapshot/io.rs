@@ -121,12 +121,13 @@ fn serialize_graph<G: Serialize>(
 ) -> Result<Vec<u8>, SnapshotError> {
     match cfg.format {
         SnapshotFormat::Bincode => {
-            let meta_bytes = bincode::serde::encode_to_vec(meta, bincode::config::standard())
+            let meta_bytes = postcard::to_allocvec(meta)
                 .map_err(|e| SnapshotError::ParseError(e.to_string()))?;
-            let graph_bytes = bincode::serde::encode_to_vec(graph, bincode::config::standard())
+            let graph_bytes = postcard::to_allocvec(graph)
                 .map_err(|e| SnapshotError::ParseError(e.to_string()))?;
             let meta_len = meta_bytes.len() as u64;
-            let mut out = Vec::with_capacity(8 + meta_bytes.len() + graph_bytes.len());
+            let mut out = Vec::with_capacity(4 + 8 + meta_bytes.len() + graph_bytes.len());
+            out.extend_from_slice(b"PGL\x02");
             out.extend_from_slice(&meta_len.to_le_bytes());
             out.extend_from_slice(&meta_bytes);
             out.extend_from_slice(&graph_bytes);
@@ -226,11 +227,8 @@ fn read_meta_from_bytes(
         if bytes.len() < 8 + meta_len {
             return Err(SnapshotError::ParseError("file truncated".into()));
         }
-        let (meta, _) = bincode::serde::decode_from_slice::<SnapshotMeta, _>(
-            &bytes[8..8 + meta_len],
-            bincode::config::standard(),
-        )
-        .map_err(|e| SnapshotError::ParseError(e.to_string()))?;
+        let meta = postcard::from_bytes::<SnapshotMeta>(&bytes[8..8 + meta_len])
+            .map_err(|e| SnapshotError::ParseError(e.to_string()))?;
         Ok(meta)
     }
 }
@@ -255,11 +253,8 @@ fn read_meta_from_file(path: &std::path::Path) -> Result<SnapshotMeta, SnapshotE
     let mut meta_buf = vec![0u8; meta_len];
     f.read_exact(&mut meta_buf)?;
     // f dropped here — remaining bytes never read
-    let (meta, _) = bincode::serde::decode_from_slice::<SnapshotMeta, _>(
-        &meta_buf,
-        bincode::config::standard(),
-    )
-    .map_err(|e| SnapshotError::ParseError(e.to_string()))?;
+    let meta = postcard::from_bytes::<SnapshotMeta>(&meta_buf)
+        .map_err(|e| SnapshotError::ParseError(e.to_string()))?;
     Ok(meta)
 }
 
@@ -320,11 +315,8 @@ where
         if bytes.len() < graph_start {
             return Err(SnapshotError::ParseError("file truncated".into()));
         }
-        let (graph, _) = bincode::serde::decode_from_slice::<G, _>(
-            &bytes[graph_start..],
-            bincode::config::standard(),
-        )
-        .map_err(|e| SnapshotError::ParseError(e.to_string()))?;
+        let graph = postcard::from_bytes::<G>(&bytes[graph_start..])
+            .map_err(|e| SnapshotError::ParseError(e.to_string()))?;
         graph
     };
 
