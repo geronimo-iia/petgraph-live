@@ -6,16 +6,16 @@ Published to [crates.io](https://crates.io/crates/petgraph-live).
 
 ```toml
 [dependencies]
-petgraph-live = "0.3"
+petgraph-live = "0.5"
 
 # With snapshot support:
-petgraph-live = { version = "0.3", features = ["snapshot"] }
+petgraph-live = { version = "0.5", features = ["snapshot"] }
 
 # With zstd compression:
-petgraph-live = { version = "0.3", features = ["snapshot-zstd"] }
+petgraph-live = { version = "0.5", features = ["snapshot-zstd"] }
 
 # With LZ4 compression:
-petgraph-live = { version = "0.3", features = ["snapshot-lz4"] }
+petgraph-live = { version = "0.5", features = ["snapshot-lz4"] }
 ```
 
 ## Branch Strategy
