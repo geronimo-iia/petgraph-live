@@ -805,3 +805,30 @@ fn test_save_load_roundtrip_postcard() {
     let loaded: Option<Graph<String, ()>> = load(&cfg).unwrap();
     assert_eq!(loaded.unwrap().node_count(), 1);
 }
+
+#[cfg(feature = "snapshot")]
+#[test]
+fn test_inspect_returns_legacy_format_for_old_snap() {
+    use petgraph_live::snapshot::{Compression, SnapshotConfig, SnapshotError, SnapshotFormat, inspect};
+    let dir = tempfile::tempdir().unwrap();
+    let cfg = SnapshotConfig {
+        dir: dir.path().to_path_buf(),
+        name: "g".into(),
+        key: Some("v1".into()),
+        format: SnapshotFormat::Bincode,
+        compression: Compression::None,
+        keep: 3,
+    };
+    // Fake v1 file: 8 zero bytes + junk (no magic prefix)
+    let snap_path = dir.path().join("g-v1.snap");
+    let mut fake = vec![0u8; 8];
+    fake.extend_from_slice(b"junk");
+    std::fs::write(&snap_path, &fake).unwrap();
+
+    let result = inspect(&cfg);
+    assert!(
+        matches!(result, Err(SnapshotError::LegacyFormat { .. })),
+        "expected LegacyFormat, got {:?}",
+        result
+    );
+}

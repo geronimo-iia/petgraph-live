@@ -220,16 +220,21 @@ fn read_meta_from_bytes(
             serde_json::from_slice(bytes).map_err(|e| SnapshotError::ParseError(e.to_string()))?;
         Ok(wrapper.meta)
     } else {
-        if bytes.len() < 8 {
+        if bytes.len() < 4 {
             return Err(SnapshotError::ParseError("file too short".into()));
         }
-        let meta_len = u64::from_le_bytes(bytes[..8].try_into().unwrap()) as usize;
-        if bytes.len() < 8 + meta_len {
+        if &bytes[..4] != b"PGL\x02" {
+            return Err(SnapshotError::LegacyFormat { path: path.to_path_buf() });
+        }
+        if bytes.len() < 12 {
             return Err(SnapshotError::ParseError("file truncated".into()));
         }
-        let meta = postcard::from_bytes::<SnapshotMeta>(&bytes[8..8 + meta_len])
-            .map_err(|e| SnapshotError::ParseError(e.to_string()))?;
-        Ok(meta)
+        let meta_len = u64::from_le_bytes(bytes[4..12].try_into().unwrap()) as usize;
+        if bytes.len() < 12 + meta_len {
+            return Err(SnapshotError::ParseError("file truncated".into()));
+        }
+        postcard::from_bytes::<SnapshotMeta>(&bytes[12..12 + meta_len])
+            .map_err(|e| SnapshotError::ParseError(e.to_string()))
     }
 }
 
@@ -245,17 +250,21 @@ fn read_meta_from_file(path: &std::path::Path) -> Result<SnapshotMeta, SnapshotE
         return read_meta_from_bytes(path, &bytes);
     }
 
-    // Uncompressed bincode — partial read, graph bytes never loaded
+    // Uncompressed postcard — partial read, graph bytes never loaded
     let mut f = std::fs::File::open(path)?;
+    let mut magic = [0u8; 4];
+    f.read_exact(&mut magic)?;
+    if &magic != b"PGL\x02" {
+        return Err(SnapshotError::LegacyFormat { path: path.to_path_buf() });
+    }
     let mut len_buf = [0u8; 8];
     f.read_exact(&mut len_buf)?;
     let meta_len = u64::from_le_bytes(len_buf) as usize;
     let mut meta_buf = vec![0u8; meta_len];
     f.read_exact(&mut meta_buf)?;
     // f dropped here — remaining bytes never read
-    let meta = postcard::from_bytes::<SnapshotMeta>(&meta_buf)
-        .map_err(|e| SnapshotError::ParseError(e.to_string()))?;
-    Ok(meta)
+    postcard::from_bytes::<SnapshotMeta>(&meta_buf)
+        .map_err(|e| SnapshotError::ParseError(e.to_string()))
 }
 
 /// Deserialize and return the snapshot matching `cfg.key`, or the most recent
