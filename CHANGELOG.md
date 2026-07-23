@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Bumped `lz4_flex` 0.13 → 0.14
+- Updated `serde` 1.0.228 → 1.0.229, `serde_json` 1.0.150 → 1.0.151, `thiserror` 2.0.18 → 2.0.19
 
 ### Security
 
