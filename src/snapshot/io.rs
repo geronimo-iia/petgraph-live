@@ -224,7 +224,9 @@ fn read_meta_from_bytes(
             return Err(SnapshotError::ParseError("file too short".into()));
         }
         if &bytes[..4] != b"PGL\x02" {
-            return Err(SnapshotError::LegacyFormat { path: path.to_path_buf() });
+            return Err(SnapshotError::LegacyFormat {
+                path: path.to_path_buf(),
+            });
         }
         if bytes.len() < 12 {
             return Err(SnapshotError::ParseError("file truncated".into()));
@@ -255,7 +257,9 @@ fn read_meta_from_file(path: &std::path::Path) -> Result<SnapshotMeta, SnapshotE
     let mut magic = [0u8; 4];
     f.read_exact(&mut magic)?;
     if &magic != b"PGL\x02" {
-        return Err(SnapshotError::LegacyFormat { path: path.to_path_buf() });
+        return Err(SnapshotError::LegacyFormat {
+            path: path.to_path_buf(),
+        });
     }
     let mut len_buf = [0u8; 8];
     f.read_exact(&mut len_buf)?;

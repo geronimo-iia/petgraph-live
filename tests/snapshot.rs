@@ -77,7 +77,9 @@ fn test_error_display() {
 fn test_error_legacy_format_display() {
     use petgraph_live::snapshot::SnapshotError;
     use std::path::PathBuf;
-    let err = SnapshotError::LegacyFormat { path: PathBuf::from("/tmp/old.snap") };
+    let err = SnapshotError::LegacyFormat {
+        path: PathBuf::from("/tmp/old.snap"),
+    };
     assert!(err.to_string().contains("legacy"));
 }
 
@@ -86,9 +88,15 @@ fn test_error_legacy_format_display() {
 fn test_error_legacy_format_partial_eq() {
     use petgraph_live::snapshot::SnapshotError;
     use std::path::PathBuf;
-    let a = SnapshotError::LegacyFormat { path: PathBuf::from("/a.snap") };
-    let b = SnapshotError::LegacyFormat { path: PathBuf::from("/a.snap") };
-    let c = SnapshotError::LegacyFormat { path: PathBuf::from("/b.snap") };
+    let a = SnapshotError::LegacyFormat {
+        path: PathBuf::from("/a.snap"),
+    };
+    let b = SnapshotError::LegacyFormat {
+        path: PathBuf::from("/a.snap"),
+    };
+    let c = SnapshotError::LegacyFormat {
+        path: PathBuf::from("/b.snap"),
+    };
     assert_eq!(a, b);
     assert_ne!(a, c);
 }
@@ -809,7 +817,9 @@ fn test_save_load_roundtrip_postcard() {
 #[cfg(feature = "snapshot")]
 #[test]
 fn test_inspect_returns_legacy_format_for_old_snap() {
-    use petgraph_live::snapshot::{Compression, SnapshotConfig, SnapshotError, SnapshotFormat, inspect};
+    use petgraph_live::snapshot::{
+        Compression, SnapshotConfig, SnapshotError, SnapshotFormat, inspect,
+    };
     let dir = tempfile::tempdir().unwrap();
     let cfg = SnapshotConfig {
         dir: dir.path().to_path_buf(),
@@ -868,14 +878,20 @@ fn test_load_or_build_rebuilds_on_legacy_file() {
     assert_eq!(graph.node_count(), 1);
     // File should have been replaced with valid v2
     let snap_bytes = std::fs::read(&snap_path).unwrap();
-    assert_eq!(&snap_bytes[..4], b"PGL\x02", "new file must have magic bytes");
+    assert_eq!(
+        &snap_bytes[..4],
+        b"PGL\x02",
+        "new file must have magic bytes"
+    );
 }
 
 #[cfg(feature = "snapshot")]
 #[test]
 fn test_load_returns_legacy_format_for_old_snap() {
     use petgraph::Graph;
-    use petgraph_live::snapshot::{Compression, SnapshotConfig, SnapshotError, SnapshotFormat, load};
+    use petgraph_live::snapshot::{
+        Compression, SnapshotConfig, SnapshotError, SnapshotFormat, load,
+    };
     let dir = tempfile::tempdir().unwrap();
     let cfg = SnapshotConfig {
         dir: dir.path().to_path_buf(),
