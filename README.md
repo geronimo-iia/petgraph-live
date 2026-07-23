@@ -1,6 +1,6 @@
 # petgraph-live
 
-> **Status: v0.3.0.** All modules implemented. API not yet stable.
+> **Status: v0.5.0.** All modules implemented. API not yet stable.
 
 Graph cache, snapshot, and algorithms for [`petgraph`](https://docs.rs/petgraph) 0.8.
 
@@ -15,7 +15,7 @@ the operational layer missing for long-running processes:
 
 - **Disk snapshot** — persist and restore the cached graph across process restarts.
   Atomic writes, key-based validity check, silent fallback to rebuild on
-  mismatch or corruption. Optional zstd compression.
+  mismatch or corruption. Binary format via `postcard`; optional zstd/LZ4 compression.
 
 - **Managed lifecycle** — `GraphState<G>` composes cache and snapshot into a
   single object: cold start, warm start from snapshot, stale-key rebuild, rotation.
@@ -104,16 +104,16 @@ let graph = state.get_fresh()?;     // checks key, rebuilds if stale
 
 ```toml
 [dependencies]
-petgraph-live = "0.3"
+petgraph-live = "0.5"
 
 # With snapshot:
-petgraph-live = { version = "0.3", features = ["snapshot"] }
+petgraph-live = { version = "0.5", features = ["snapshot"] }
 
 # With zstd compression:
-petgraph-live = { version = "0.3", features = ["snapshot-zstd"] }
+petgraph-live = { version = "0.5", features = ["snapshot-zstd"] }
 
 # With LZ4 compression (faster decompression, larger files):
-petgraph-live = { version = "0.3", features = ["snapshot-lz4"] }
+petgraph-live = { version = "0.5", features = ["snapshot-lz4"] }
 ```
 
 ## Motivation

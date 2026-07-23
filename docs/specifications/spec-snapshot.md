@@ -6,7 +6,7 @@ read_when:
   - Understanding binary and JSON file layout
   - Adding or changing compression support
 status: implemented
-last_updated: "2026-05-02"
+last_updated: "2026-07-23"
 ---
 
 # Specification: `snapshot` module
@@ -27,15 +27,25 @@ last_updated: "2026-05-02"
 `sanitize_key`: replace chars outside `[a-zA-Z0-9_.-]` with `_`. Error if result trims to empty.
 Same key → same filename → idempotent overwrite.
 
-## Binary layout (bincode)
+## Binary layout (postcard, v2)
 
 ```
-meta_len   : u64 le
-meta_bytes : [u8; meta_len]   (bincode SnapshotMeta)
-graph_bytes: [u8]             (bincode G, remainder)
+magic      : [u8; 4]          b"PGL\x02"
+meta_len   : u64 le           (8 bytes)
+meta_bytes : [u8; meta_len]   (postcard SnapshotMeta)
+graph_bytes: [u8]             (postcard G, remainder)
 ```
 
-`inspect` reads only `meta_len + meta_bytes`. Graph bytes never touched.
+`inspect` reads only `4 + 8 + meta_len` bytes. Graph bytes never touched.
+
+### Legacy detection (v1 / bincode-era files)
+
+Files written by v0.4.x lack the `b"PGL\x02"` magic prefix. On read:
+- `load()` returns `Err(SnapshotError::LegacyFormat { path })`
+- `load_or_build()` treats `LegacyFormat` as a cache miss — deletes nothing, calls `build`, saves a new v2 file
+- `inspect()` / `list()` return `Err(SnapshotError::LegacyFormat { path })`
+
+Users calling `load()` directly: delete old `.snap` / `.snap.zst` / `.snap.lz4` files before upgrading.
 
 ## JSON layout
 
@@ -55,11 +65,10 @@ graph_bytes: [u8]             (bincode G, remainder)
 mtime-based (not filename order). On every `save`: delete all but `keep` newest files.
 `.tmp` files excluded from rotation and list.
 
-## Bincode API
+## Serialization API
 
-Uses `bincode 2.x` — `bincode::serde::encode_to_vec` / `bincode::serde::decode_from_slice`
-with `bincode::config::standard()`. Requires `features = ["serde"]` on the bincode dep.
-Not the 1.x API. Not `bincode::Encode`/`Decode` traits.
+Uses `postcard 1.x` — `postcard::to_allocvec` (encode) / `postcard::from_bytes` (decode).
+Requires `features = ["use-std"]` on the postcard dep. No config object needed.
 
 ## Known constraints
 

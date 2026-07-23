@@ -74,6 +74,35 @@ fn test_error_display() {
 
 #[cfg(feature = "snapshot")]
 #[test]
+fn test_error_legacy_format_display() {
+    use petgraph_live::snapshot::SnapshotError;
+    use std::path::PathBuf;
+    let err = SnapshotError::LegacyFormat {
+        path: PathBuf::from("/tmp/old.snap"),
+    };
+    assert!(err.to_string().contains("legacy"));
+}
+
+#[cfg(feature = "snapshot")]
+#[test]
+fn test_error_legacy_format_partial_eq() {
+    use petgraph_live::snapshot::SnapshotError;
+    use std::path::PathBuf;
+    let a = SnapshotError::LegacyFormat {
+        path: PathBuf::from("/a.snap"),
+    };
+    let b = SnapshotError::LegacyFormat {
+        path: PathBuf::from("/a.snap"),
+    };
+    let c = SnapshotError::LegacyFormat {
+        path: PathBuf::from("/b.snap"),
+    };
+    assert_eq!(a, b);
+    assert_ne!(a, c);
+}
+
+#[cfg(feature = "snapshot")]
+#[test]
 fn test_rotation_keep_3() {
     use petgraph_live::snapshot::rotation::{keep_n, list_snapshot_files};
     use std::{
@@ -572,8 +601,8 @@ fn test_inspect_partial_read_bincode() {
     // Read the valid file to extract the meta header bytes
     let good_path = dir.path().join("mygraph-goodkey.snap");
     let raw = std::fs::read(&good_path).unwrap();
-    let meta_len = u64::from_le_bytes(raw[..8].try_into().unwrap()) as usize;
-    let header = &raw[..8 + meta_len];
+    let meta_len = u64::from_le_bytes(raw[4..12].try_into().unwrap()) as usize;
+    let header = &raw[..12 + meta_len];
 
     // Build a file: valid header + garbage bytes
     let mut bad_bytes = header.to_vec();
@@ -762,4 +791,126 @@ fn save_creates_missing_directory() {
     assert!(dir.exists(), "save() did not create the directory");
 
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[cfg(feature = "snapshot")]
+#[test]
+fn test_save_load_roundtrip_postcard() {
+    use petgraph::Graph;
+    use petgraph_live::snapshot::{Compression, SnapshotConfig, SnapshotFormat, load, save};
+    let dir = tempfile::tempdir().unwrap();
+    let cfg = SnapshotConfig {
+        dir: dir.path().to_path_buf(),
+        name: "g".into(),
+        key: Some("v1".into()),
+        format: SnapshotFormat::Bincode,
+        compression: Compression::None,
+        keep: 3,
+    };
+    let mut g: Graph<String, ()> = Graph::new();
+    g.add_node("hello".into());
+    save(&cfg, &g).unwrap();
+    let loaded: Option<Graph<String, ()>> = load(&cfg).unwrap();
+    assert_eq!(loaded.unwrap().node_count(), 1);
+}
+
+#[cfg(feature = "snapshot")]
+#[test]
+fn test_inspect_returns_legacy_format_for_old_snap() {
+    use petgraph_live::snapshot::{
+        Compression, SnapshotConfig, SnapshotError, SnapshotFormat, inspect,
+    };
+    let dir = tempfile::tempdir().unwrap();
+    let cfg = SnapshotConfig {
+        dir: dir.path().to_path_buf(),
+        name: "g".into(),
+        key: Some("v1".into()),
+        format: SnapshotFormat::Bincode,
+        compression: Compression::None,
+        keep: 3,
+    };
+    // Fake v1 file: 8 zero bytes + junk (no magic prefix)
+    let snap_path = dir.path().join("g-v1.snap");
+    let mut fake = vec![0u8; 8];
+    fake.extend_from_slice(b"junk");
+    std::fs::write(&snap_path, &fake).unwrap();
+
+    let result = inspect(&cfg);
+    assert!(
+        matches!(result, Err(SnapshotError::LegacyFormat { .. })),
+        "expected LegacyFormat, got {:?}",
+        result
+    );
+}
+
+#[cfg(feature = "snapshot")]
+#[test]
+fn test_load_or_build_rebuilds_on_legacy_file() {
+    use petgraph::Graph;
+    use petgraph_live::snapshot::{Compression, SnapshotConfig, SnapshotFormat, load_or_build};
+    let dir = tempfile::tempdir().unwrap();
+    let cfg = SnapshotConfig {
+        dir: dir.path().to_path_buf(),
+        name: "g".into(),
+        key: Some("v1".into()),
+        format: SnapshotFormat::Bincode,
+        compression: Compression::None,
+        keep: 3,
+    };
+
+    // Write a fake v1 (bincode-era) file: 8 zero bytes followed by junk.
+    // The first 4 bytes are \x00\x00\x00\x00 — not b"PGL\x02" — so LegacyFormat fires.
+    let snap_path = dir.path().join("g-v1.snap");
+    let mut fake = vec![0u8; 8];
+    fake.extend_from_slice(b"garbage");
+    std::fs::write(&snap_path, &fake).unwrap();
+
+    let mut built = false;
+    let graph: Graph<String, ()> = load_or_build(&cfg, || {
+        built = true;
+        let mut g: Graph<String, ()> = Graph::new();
+        g.add_node("rebuilt".into());
+        Ok(g)
+    })
+    .unwrap();
+
+    assert!(built, "build fn should have been called");
+    assert_eq!(graph.node_count(), 1);
+    // File should have been replaced with valid v2
+    let snap_bytes = std::fs::read(&snap_path).unwrap();
+    assert_eq!(
+        &snap_bytes[..4],
+        b"PGL\x02",
+        "new file must have magic bytes"
+    );
+}
+
+#[cfg(feature = "snapshot")]
+#[test]
+fn test_load_returns_legacy_format_for_old_snap() {
+    use petgraph::Graph;
+    use petgraph_live::snapshot::{
+        Compression, SnapshotConfig, SnapshotError, SnapshotFormat, load,
+    };
+    let dir = tempfile::tempdir().unwrap();
+    let cfg = SnapshotConfig {
+        dir: dir.path().to_path_buf(),
+        name: "g".into(),
+        key: Some("v1".into()),
+        format: SnapshotFormat::Bincode,
+        compression: Compression::None,
+        keep: 3,
+    };
+    // Fake v1 file: u64 le(5) + 5 junk bytes (no magic prefix)
+    let snap_path = dir.path().join("g-v1.snap");
+    let mut fake = 5u64.to_le_bytes().to_vec();
+    fake.extend_from_slice(b"hello");
+    std::fs::write(&snap_path, &fake).unwrap();
+
+    let result: Result<Option<Graph<String, ()>>, _> = load(&cfg);
+    assert!(
+        matches!(result, Err(SnapshotError::LegacyFormat { .. })),
+        "expected LegacyFormat, got {:?}",
+        result
+    );
 }
