@@ -1,6 +1,6 @@
 [package]
 name = "petgraph-live"
-version = "0.4.0"
+version = "0.5.0"
 edition = "2024"
 rust-version = "1.95"
 description = "Generic generation-keyed graph cache, disk snapshot, and graph algorithms for petgraph 0.8"
@@ -17,7 +17,7 @@ default = []
 snapshot = [
     "dep:serde",
     "dep:serde_json",
-    "dep:bincode",
+    "dep:postcard",
     "dep:thiserror",
     "petgraph/serde-1",
 ]
@@ -29,7 +29,7 @@ petgraph = { version = "0.8", features = [] }
 
 serde      = { version = "1",    features = ["derive"], optional = true }
 serde_json = { version = "1",    optional = true }
-bincode    = { version = "2",    features = ["serde"], optional = true }
+postcard   = { version = "1",    features = ["use-std"], optional = true }
 thiserror  = { version = "2",    optional = true }
 zstd       = { version = "0.13", optional = true }
 lz4_flex   = { version = "0.13", optional = true }
