@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `load_or_build()` transparently rebuilds on legacy files — no action needed for most users.
 - Users calling `load()` directly: delete old snapshot files before upgrading.
 
+### Security
+
+- Updated `crossbeam-epoch` to 0.9.20 (RUSTSEC-2026-0204: invalid pointer dereference in `fmt::Pointer` impl)
+
 ## [0.4.0] — 2026-06-29
 
 ### Added
