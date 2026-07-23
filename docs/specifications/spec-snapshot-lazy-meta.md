@@ -1,12 +1,12 @@
 ---
 title: "snapshot lazy metadata — inspect and list without loading graph body"
-summary: "Partial file read for bincode inspect/list; serde ignore-unknown-fields for JSON — avoids deserializing G when only SnapshotMeta is needed."
+summary: "Partial file read for postcard inspect/list; serde ignore-unknown-fields for JSON — avoids deserializing G when only SnapshotMeta is needed."
 read_when:
   - Implementing or modifying inspect() or list() in snapshot module
   - Understanding why inspect is cheaper than load
   - Reasoning about compressed vs uncompressed partial read behavior
 status: implemented
-last_updated: "2026-05-02"
+last_updated: "2026-07-23"
 ---
 
 # Specification: snapshot lazy metadata
@@ -30,22 +30,28 @@ snapshots) this loads and decompresses megabytes that are immediately discarded.
 
 Two independent improvements, one per format:
 
-### Bincode — partial file read
+### Postcard — partial file read
 
-The bincode layout is:
+The postcard (v2) layout is:
 
 ```
+magic      : [u8; 4]          b"PGL\x02"
 meta_len   : u64 le           (8 bytes)
-meta_bytes : [u8; meta_len]   (bincode SnapshotMeta)
+meta_bytes : [u8; meta_len]   (postcard SnapshotMeta)
 graph_bytes: [u8]             (remainder — never needed for inspect)
 ```
 
-`inspect` only needs `8 + meta_len` bytes. Replace `std::fs::read(&path)` with:
+`inspect` only needs `4 + 8 + meta_len` bytes. Implementation:
 
 ```rust
-use std::io::{Read, Seek};
+use std::io::Read;
 
 let mut f = std::fs::File::open(&path)?;
+let mut magic = [0u8; 4];
+f.read_exact(&mut magic)?;
+if &magic != b"PGL\x02" {
+    return Err(SnapshotError::LegacyFormat { path: path.to_path_buf() });
+}
 let mut len_buf = [0u8; 8];
 f.read_exact(&mut len_buf)?;
 let meta_len = u64::from_le_bytes(len_buf) as usize;
@@ -54,7 +60,7 @@ f.read_exact(&mut meta_buf)?;
 // f is dropped — graph bytes never read from disk
 ```
 
-**Win:** I/O reduced from `file_size` bytes to `8 + meta_len` bytes (typically a few hundred bytes vs. megabytes).
+**Win:** I/O reduced from `file_size` bytes to `12 + meta_len` bytes (typically a few hundred bytes vs. megabytes).
 
 ### JSON — skip graph deserialization
 
@@ -87,7 +93,7 @@ For `.snap.zst`, `.snap.lz4`, `.json.zst`, `.json.lz4`: the entire compressed pa
 must be decompressed before partial reads or serde tricks can apply. Partial I/O is not
 possible through a block decompressor without seeking. This is documented, not fixed.
 
-The gains still apply after decompression: for bincode+compression, partial parse
+The gains still apply after decompression: for postcard+compression, partial parse
 applies to the decompressed bytes. For JSON+compression, `MetaOnly` still avoids `G`.
 
 ---
@@ -125,14 +131,14 @@ The change is in `read_meta_from_bytes` (shared by `inspect` and `list`) and in 
 Split into two functions:
 
 ```rust
-// For inspect — reads only what's needed from disk (uncompressed bincode)
+// For inspect — reads only what's needed from disk (uncompressed postcard)
 fn read_meta_from_file(path: &Path) -> Result<SnapshotMeta, SnapshotError>
 
 // For load — still reads full file (graph bytes needed)
 fn read_meta_from_bytes(path: &Path, bytes: &[u8]) -> Result<SnapshotMeta, SnapshotError>
 ```
 
-`inspect` uses `read_meta_from_file` for uncompressed bincode, falls back to full read
+`inspect` uses `read_meta_from_file` for uncompressed postcard, falls back to full read
 for compressed or JSON files. `list` follows the same pattern.
 
 The JSON path in `read_meta_from_bytes` changes from `serde_json::Value` to `MetaOnly`.
@@ -143,10 +149,11 @@ The JSON path in `read_meta_from_bytes` changes from `serde_json::Value` to `Met
 
 | Test | Verifies |
 |---|---|
-| `test_inspect_does_not_read_graph_bytes_bincode` | bincode inspect: file handle read position after inspect = `8 + meta_len` (not EOF) |
+| `test_inspect_partial_read_bincode` | postcard inspect: valid header + garbage graph bytes — inspect() succeeds, load() fails with ParseError |
+| `test_inspect_returns_legacy_format_for_old_snap` | inspect() returns LegacyFormat on a v1 file (no magic prefix) |
 | `test_inspect_json_meta_only` | JSON inspect: works on file where graph field is gigantic (large serialized value) |
-| `test_list_meta_only_bincode` | list() returns correct meta for multiple bincode files |
-| `test_list_meta_only_json` | list() returns correct meta for multiple JSON files |
+| `test_list_partial_read_bincode` | list() returns correct meta for multiple postcard files |
+| `test_list_json_meta_only` | list() returns correct meta for multiple JSON files |
 | existing tests | `test_inspect_reads_meta_without_graph`, `test_inspect_none_key_most_recent` still pass |
 
 ---
