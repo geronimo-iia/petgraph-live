@@ -307,17 +307,22 @@ where
         )
         .map_err(|e| SnapshotError::ParseError(e.to_string()))?
     } else {
-        if bytes.len() < 8 {
+        if bytes.len() < 4 {
             return Err(SnapshotError::ParseError("file too short".into()));
         }
-        let meta_len = u64::from_le_bytes(bytes[..8].try_into().unwrap()) as usize;
-        let graph_start = 8 + meta_len;
+        if &bytes[..4] != b"PGL\x02" {
+            return Err(SnapshotError::LegacyFormat { path: path.clone() });
+        }
+        if bytes.len() < 12 {
+            return Err(SnapshotError::ParseError("file too short".into()));
+        }
+        let meta_len = u64::from_le_bytes(bytes[4..12].try_into().unwrap()) as usize;
+        let graph_start = 12 + meta_len;
         if bytes.len() < graph_start {
             return Err(SnapshotError::ParseError("file truncated".into()));
         }
-        let graph = postcard::from_bytes::<G>(&bytes[graph_start..])
-            .map_err(|e| SnapshotError::ParseError(e.to_string()))?;
-        graph
+        postcard::from_bytes::<G>(&bytes[graph_start..])
+            .map_err(|e| SnapshotError::ParseError(e.to_string()))?
     };
 
     Ok(Some(graph))
