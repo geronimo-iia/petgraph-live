@@ -8,8 +8,8 @@
 //! encoded in the filename so two saves with the same key overwrite each other.
 //! Rotation keeps the latest `keep` files by filesystem mtime.
 //!
-//! [`inspect`] and [`list`] use partial reads for uncompressed bincode files —
-//! only the `8 + meta_len` byte header is read from disk; graph bytes are never loaded.
+//! [`inspect`] and [`list`] use partial reads for uncompressed postcard files —
+//! only the `4 + 8 + meta_len` byte header is read from disk; graph bytes are never loaded.
 //!
 //! # Quick start
 //!

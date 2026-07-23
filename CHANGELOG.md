@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-07-23
+
+### Breaking
+
+- Replaced `bincode` with `postcard` for binary snapshot serialization.
+  `bincode-org/bincode` was archived 2025-08-15; `bincode 2.0.1` is its final release.
+- Snapshot wire format v2: `.snap` files now start with magic bytes `b"PGL\x02"`.
+  Existing `.snap` / `.snap.zst` / `.snap.lz4` files written by v0.4.x are not readable.
+- `load()` returns `Err(SnapshotError::LegacyFormat { path })` for old files.
+- `load_or_build()` transparently rebuilds on legacy files — no action needed for most users.
+- Users calling `load()` directly: delete old snapshot files before upgrading.
+
 ## [0.4.0] — 2026-06-29
 
 ### Added
