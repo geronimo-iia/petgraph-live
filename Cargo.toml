@@ -31,7 +31,7 @@ serde      = { version = "1",    features = ["derive"], optional = true }
 serde_json = { version = "1",    optional = true }
 postcard   = { version = "1",    features = ["use-std"], optional = true }
 thiserror  = { version = "2",    optional = true }
-zstd       = { version = "0.13", optional = true }
+zstd       = { version = "0.14", optional = true }
 lz4_flex   = { version = "0.14", optional = true }
 
 [dev-dependencies]
